@@ -1,3 +1,5 @@
+import os
+os.environ['PROJ_LIB'] = '/opt/conda/share/proj'
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 import matplotlib.pyplot as plt
