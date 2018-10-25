@@ -16,7 +16,7 @@ test_file = f'{DATA_DIR}/test.csv'
 
 
 
-@file_cache(overwrite=True)
+@file_cache(overwrite=False)
 def get_train_with_distance():
     train = get_time_extend(train_file)
     train['label'] = 'train'
