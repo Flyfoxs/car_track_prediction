@@ -16,13 +16,27 @@ test_file = f'{DATA_DIR}/test.csv'
 
 
 
-@file_cache()
+@file_cache(overwrite=True)
 def get_train_with_distance():
-    train = pd.read_csv(train_file, delimiter=',')
+    train = get_time_extend(train_file)
     train['label'] = 'train'
-    train.out_id = train.out_id.astype('str')
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
     return train
+
+@file_cache()
+def get_time_extend(file):
+    try:
+        df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'])
+    except:
+        df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'])
+    df.out_id = df.out_id.astype('str')
+    df['day'] = df.start_time.dt.day
+    df['weekday'] = df.start_time.dt.weekday
+    df['hour'] = df.start_time.dt.hour
+    df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
+
+    return df
+
 
 
 def getDistance(latA, lonA, latB, lonB):
