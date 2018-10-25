@@ -10,10 +10,20 @@
 ## Test: 47493, 5
 * Car:5734 Overlap car with traing:5734
 
-## time, week, Holiday
-    How many time for long distance
+## TIPS
+* time, week, Holiday
+* How many time for long distance
+* Similar calculation
+* Compay,Home
+* Speed, avg distance 
+* Distance/ClusterNumber bin
+* How many record over n times average
+* Drop long weekend
 
 ## 
 
 ## Install
 * conda install basemap
+
+
+
