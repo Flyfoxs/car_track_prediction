@@ -66,19 +66,23 @@ def cal_distance_gap_center_lon(place_list):
 
 @file_cache(overwrite=True)
 def reduce_address():
+    # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat()
-
+    #Cal center of zoneid base on lat
     distance_zone_id_lat =  cal_zoneid(distance_gap_lat)
-
+    # Cal posiztion of center on lat
     center_lat = cal_center_of_zoneid(distance_zone_id_lat)
 
-    distance_center = cal_distance_gap_center_lon(center_lat)
 
-    distance_zone_id_lon = cal_zoneid(distance_center)
 
-    distance_center = cal_distance_gap_center_lon(distance_zone_id_lon)
+    #Cal the distance from previous by lon
+    distance_gap_lon = cal_distance_gap_center_lon(center_lat)
+    # Cal center of zoneid base on lon
+    distance_zone_id_lon = cal_zoneid(distance_gap_lon)
+    # Cal posiztion of center on lon
+    center_lon = cal_center_of_zoneid(distance_zone_id_lon)
 
-    return distance_center
+    return center_lon
 
 
 
