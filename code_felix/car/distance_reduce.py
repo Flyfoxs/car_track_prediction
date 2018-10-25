@@ -2,8 +2,8 @@ from code_felix.car.utils import *
 
 @timed()
 def cal_distance_gap_lat():
-    train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])[:100]
-    test = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])[:200]
+    train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])
+    test = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])
 
     df_list = [train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
@@ -64,7 +64,7 @@ def cal_distance_gap_center_lon(place_list):
     return place_list
 
 
-@file_cache()
+@file_cache(overwrite=True)
 def reduce_address():
     distance_gap_lat = cal_distance_gap_lat()
 
