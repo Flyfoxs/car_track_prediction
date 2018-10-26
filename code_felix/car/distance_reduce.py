@@ -29,23 +29,24 @@ def cal_distance_gap_lat():
     return place_list
 
 @timed()
-def cal_zoneid(df):
+def cal_zoneid(df, distance_threshold):
     gp = df.groupby('out_id')
     gp_list = []
     for index, df in gp:
         gp_list.append(df)
     logger.debug(f"Already split the gp to mini group:{len(gp_list)}")
     from multiprocessing import Pool as ThreadPool
+    from functools import partial
+    cal_mini_df_ex = partial(cal_mini_df,distance_threshold=distance_threshold )
     pool = ThreadPool(processes=4)
-    results = pool.map(cal_mini_df, gp_list)
+    results = pool.map(cal_mini_df_ex, gp_list)
     pool.close() ; pool.join()
 
     all = pd.concat(results)
     return all
 
 
-def cal_mini_df(mini):
-    distance_threshold = 100
+def cal_mini_df(mini, distance_threshold):
     mini['zoneid'] = None
     mini = mini.reset_index(drop=True)
     for index, item in mini.iterrows():
@@ -55,7 +56,7 @@ def cal_mini_df(mini):
             mini.loc[index, 'zoneid'] = mini.loc[index - 1, 'zoneid']
         else:
             mini.loc[index, 'zoneid'] = mini.loc[index - 1, 'zoneid'] + 1
-    logger.debug(f'Get {len(mini.zoneid.drop_duplicates())} zoneid from {len(mini)} records for car:{mini.out_id[0]}')
+    logger.debug(f'Get {len(mini.zoneid.drop_duplicates())} zoneid from {len(mini)} records for car:{mini.out_id[0]}, and thresold:{distance_threshold}')
 
     return mini
 
@@ -84,11 +85,11 @@ def cal_distance_gap_center_lon(place_list):
 
 
 @file_cache(overwrite=True)
-def reduce_address():
+def reduce_address(threshold):
     # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat()
     #Cal center of zoneid base on lat
-    distance_zone_id_lat =  cal_zoneid(distance_gap_lat)
+    distance_zone_id_lat =  cal_zoneid(distance_gap_lat,threshold)
     # Cal posiztion of center on lat
     center_lat = cal_center_of_zoneid(distance_zone_id_lat)
 
@@ -97,7 +98,7 @@ def reduce_address():
     #Cal the distance from previous by lon
     distance_gap_lon = cal_distance_gap_center_lon(center_lat)
     # Cal center of zoneid base on lon
-    distance_zone_id_lon = cal_zoneid(distance_gap_lon)
+    distance_zone_id_lon = cal_zoneid(distance_gap_lon,threshold)
     # Cal posiztion of center on lon
     center_lon = cal_center_of_zoneid(distance_zone_id_lon)
 
@@ -106,7 +107,8 @@ def reduce_address():
 
 
 if __name__ == '__main__':
-    df = reduce_address()
-    logger.debug(df.shape)
-    addressid = df[['out_id', 'zoneid']].drop_duplicates()
-    logger.debug(f"Only keep {len(addressid)} address")
+    for threshold in range(50, 500, 50):
+        df = reduce_address(threshold)
+        logger.debug(df.shape)
+        addressid = df[['out_id', 'zoneid']].drop_duplicates()
+        logger.debug(f"Only keep {len(addressid)} address")
