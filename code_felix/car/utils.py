@@ -30,6 +30,7 @@ def get_time_extend(file):
     except:
         df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'])
     df.out_id = df.out_id.astype('str')
+    df['start_base'] = df.start_time.dt.date
     df['day'] = df.start_time.dt.day
     df['weekday'] = df.start_time.dt.weekday
     df['hour'] = df.start_time.dt.hour

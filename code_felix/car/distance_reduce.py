@@ -29,18 +29,37 @@ def cal_distance_gap_lat():
     return place_list
 
 @timed()
-def cal_zoneid(place_list):
-    distance_gap = 100
-    place_list['zoneid']=None
-    for index, item in place_list.iterrows():
-        if index==0 or place_list.loc[index,'out_id'] != place_list.loc[index-1,'out_id']:
-            place_list.loc[index,'zoneid']=0
-        elif item.distance_gap <= distance_gap:
-            place_list.loc[index,'zoneid']=place_list.loc[index-1,'zoneid']
-        else:
-            place_list.loc[index,'zoneid']=place_list.loc[index-1,'zoneid']+1
+def cal_zoneid(df):
+    gp = df.groupby('out_id')
+    gp_list = []
+    for index, df in gp:
+        gp_list.append(df)
+    logger.debug(f"Already split the gp to mini group:{len(gp_list)}")
+    from multiprocessing import Pool as ThreadPool
+    pool = ThreadPool(processes=4)
+    results = pool.map(cal_mini_df, gp_list)
+    pool.close() ; pool.join()
 
-    return place_list
+    all = pd.concat(results)
+    return all
+
+
+def cal_mini_df(mini):
+    distance_threshold = 100
+    mini['zoneid'] = None
+    mini = mini.reset_index(drop=True)
+    for index, item in mini.iterrows():
+        if index == 0:
+            mini.loc[index, 'zoneid'] = 0
+        elif item.distance_gap <= distance_threshold:
+            mini.loc[index, 'zoneid'] = mini.loc[index - 1, 'zoneid']
+        else:
+            mini.loc[index, 'zoneid'] = mini.loc[index - 1, 'zoneid'] + 1
+    logger.debug(f'Get {len(mini.zoneid.drop_duplicates())} zoneid from {len(mini)} records for car:{mini.out_id[0]}')
+
+    return mini
+
+
 
 @timed()
 def cal_center_of_zoneid(place_list):
