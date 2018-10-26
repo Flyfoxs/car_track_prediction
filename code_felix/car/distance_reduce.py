@@ -38,7 +38,7 @@ def cal_zoneid(df, distance_threshold):
     from multiprocessing import Pool as ThreadPool
     from functools import partial
     cal_mini_df_ex = partial(cal_mini_df,distance_threshold=distance_threshold )
-    pool = ThreadPool(processes=4)
+    pool = ThreadPool(processes=8)
     results = pool.map(cal_mini_df_ex, gp_list)
     pool.close() ; pool.join()
 
