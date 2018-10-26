@@ -111,4 +111,4 @@ if __name__ == '__main__':
         df = reduce_address(threshold)
         logger.debug(df.shape)
         addressid = df[['out_id', 'zoneid']].drop_duplicates()
-        logger.debug(f"Only keep {len(addressid)} address")
+        logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
