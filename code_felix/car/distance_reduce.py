@@ -84,8 +84,8 @@ def cal_distance_gap_center_lon(place_list):
     return place_list
 
 
-@file_cache(overwrite=True)
-def reduce_address(threshold):
+@file_cache(overwrite=False)
+def reduce_address(threshold=100):
     # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat()
     #Cal center of zoneid base on lat
