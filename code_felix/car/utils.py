@@ -1,29 +1,32 @@
 import os
-os.environ['PROJ_LIB'] = '/opt/conda/share/proj'
-from mpl_toolkits.basemap import Basemap
+
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from code_felix.utils_.util_cache_file import *
-from code_felix.utils_.util_log import *
+from code_felix.utils_.util_pandas import *
 
 from math import radians, atan, tan, sin, acos, cos
 
-DATA_DIR = '/home/data'
+
+DATA_DIR = './input'
 train_file = f'{DATA_DIR}/train.csv'
 test_file = f'{DATA_DIR}/test.csv'
 
 
 
-@file_cache(overwrite=False)
+@file_cache(overwrite=True)
 def get_train_with_distance():
     train = get_time_extend(train_file)
     train['label'] = 'train'
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
+    train['distance_min' ] =   train.groupby('out_id')['distance'].transform( 'min')
+    train['distance_max' ] =   train.groupby('out_id')['distance'].transform( 'max')
+    train['distance_mean'] =   train.groupby('out_id')['distance'].transform( 'mean')
     return train
 
-@file_cache()
+#@file_cache()
 def get_time_extend(file):
     try:
         df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'])
@@ -33,11 +36,26 @@ def get_time_extend(file):
     df['start_base'] = df.start_time.dt.date
     df['day'] = df.start_time.dt.day
     df['weekday'] = df.start_time.dt.weekday
-    df['hour'] = df.start_time.dt.hour
+    df['weekend'] = df.weekday // 5
+    df['hour'] = round(df.start_time.dt.hour +df.start_time.dt.minute/60, 2)
     df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
 
     return df
 
+def adjust_position(threshold):
+
+    train = get_train_with_distance()
+    from code_felix.car.distance_reduce import reduce_address
+    zoneid = reduce_address(threshold)
+    zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
+    zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+
+    all = pd.merge(train, zoneid, how='left', )
+
+    zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
+
+    all = pd.merge(all, zoneid, how='left',)
+    return all
 
 
 def getDistance(latA, lonA, latB, lonB):
@@ -64,6 +82,8 @@ def getDistance(latA, lonA, latB, lonB):
 
 
 def show_sample_in_map(sample):
+    os.environ['PROJ_LIB'] = '/opt/conda/share/proj'
+    from mpl_toolkits.basemap import Basemap
     # create new figure, axes instances.
     fig = plt.figure()
     ax = fig.add_axes([0.1, 0.1, 2.8, 2.8])
@@ -112,6 +132,18 @@ def show_sample_in_map(sample):
     plt.show()
 
 
+def get_distance_color(distance, avg):
+    if distance<=2*avg:
+        return 'blue'
+    else:
+        return 'red'
+    #'Greens', 'Oranges', 'Reds',
+
+def time_gap(t1, t2):
+    gap = abs(t1-t2)
+    if gap > 12 :
+      gap =  24-gap
+    return round(gap/24,2)
 
 if __name__ == '__main__':
     df = get_train_with_distance()
