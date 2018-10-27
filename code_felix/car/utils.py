@@ -21,6 +21,7 @@ test_file = f'{DATA_DIR}/test.csv'
 @lru_cache()
 @file_cache(overwrite=True)
 def get_train_with_distance():
+    from code_felix.car.distance_reduce import getDistance
     train = get_time_extend(train_file)
     train['label'] = 'train'
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
@@ -91,11 +92,6 @@ def get_test_with_adjust_position(threshold):
     all = pd.merge(test, zoneid, how='left', )
     all = fill_out_id_attr(all)
     return all
-
-
-
-from code_felix.car.distance_reduce import get_center_address, getDistance
-from code_felix.car.utils import *
 
 
 
