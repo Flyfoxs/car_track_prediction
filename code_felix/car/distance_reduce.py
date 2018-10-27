@@ -1,4 +1,7 @@
 from code_felix.car.utils import *
+from code_felix.utils_.util_log import *
+from code_felix.utils_.util_date import *
+from code_felix.utils_.util_cache_file import *
 
 @timed()
 def cal_distance_gap_lat():
@@ -83,27 +86,125 @@ def cal_distance_gap_center_lon(place_list):
         place_list.apply(lambda val: getDistance(val.lat_3, val.lon_3, val.center_lat, val.center_lon), axis=1))
     return place_list
 
+@lru_cache()
+def get_center_address(threshold):
+    df = reduce_address(threshold)
+    mini = df.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon',])
+    return mini
 
 @file_cache(overwrite=False)
 def reduce_address(threshold):
     # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat()
     #Cal center of zoneid base on lat
-    distance_zone_id_lat =  cal_zoneid(distance_gap_lat,threshold)
+    dis_with_zoneid =  cal_zoneid(distance_gap_lat,threshold)
     # Cal posiztion of center on lat
-    center_lat = cal_center_of_zoneid(distance_zone_id_lat)
+
+    dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
+    dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
+
+    return dis_with_zoneid
+
+# def reduce_center_address(center_lat,threshold):
+#     mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])
+#     mini = mini.reset_index(drop=True)
+#     #0.00001 neeary 1 meter in map
+#     lon_threshold = 0.00001*threshold
+#     merge_list = []
+#     for index, cur in mini.iterrows():
+#         for next_i, next in mini[index+1:]:
+#             if cur.out_id != next.out_id:
+#                 break
+#             elif abs(cur.center_lon - next.center_lon) > lon_threshold:
+#                 break
+#             elif lon_threshold > getDistance(cur.center_lat.values, cur.center_lon.values, next.center_lat.values, next.center_lon.values, ):
+#                 merge_item = (next.out_id.values, next.zoneid.values, cur.out_id.values, cur.zoneid.values)
+#                 logger.debug('Merge %s#%s to %s#%s ' % merge_item)
+#                 merge_list.append(merge_item)
+#             else:
+#                 pass
+#     return merge_list
 
 
 
-    #Cal the distance from previous by lon
-    distance_gap_lon = cal_distance_gap_center_lon(center_lat)
-    # Cal center of zoneid base on lon
-    distance_zone_id_lon = cal_zoneid(distance_gap_lon,threshold)
-    # Cal posiztion of center on lon
-    center_lon = cal_center_of_zoneid(distance_zone_id_lon)
 
-    return center_lon
+def getDistance(latA, lonA, latB, lonB):
+    ra = 6378140  # radius of equator: meter
+    rb = 6356755  # radius of polar: meter
+    flatten = (ra - rb) / ra  # Partial rate of the earth
+    # change angle to radians
+    radLatA = radians(latA)
+    radLonA = radians(lonA)
+    radLatB = radians(latB)
+    radLonB = radians(lonB)
 
+    try:
+        pA = atan(rb / ra * tan(radLatA))
+        pB = atan(rb / ra * tan(radLatB))
+        x = acos(sin(pA) * sin(pB) + cos(pA) * cos(pB) * cos(radLonA - radLonB))
+        c1 = (sin(x) - x) * (sin(pA) + sin(pB)) ** 2 / cos(x / 2) ** 2
+        c2 = (sin(x) + x) * (sin(pA) - sin(pB)) ** 2 / sin(x / 2) ** 2
+        dr = flatten / 8 * (c1 - c2)
+        distance = ra * (x + dr)
+        return distance  # meter
+    except:
+        return 0.0000001
+
+def get_distance_zoneid(threshold, out_id, id1, id2):
+    df = get_center_address(threshold)
+    add1 = df[(df.out_id == out_id) & (df.zoneid == id1)]
+    add2 = df[(df.out_id == out_id) & (df.zoneid == id2)]
+    print(add1.center_lat.values, add1.center_lon, add2.center_lat, add2.center_lon)
+    dis = getDistance(add1.center_lat.values, add1.center_lon.values, add2.center_lat.values, add2.center_lon.values, )
+    logger.debug(f'Distance between zoneids({id1} and {id2}) is <<{round(dis)}>> for car#{out_id}')
+    return add1
+
+
+def get_center_address_need_reduce(dis_with_zoneid,threshold):
+    center_lat = cal_center_of_zoneid(dis_with_zoneid)
+    mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])
+    lon_threshold = 0.00001*threshold *2
+    merge_list = []
+    for out_id in mini.out_id.drop_duplicates():
+        out_id_mini = mini.loc[mini.out_id==out_id,:]
+        logger.debug(f'Thre are {len(out_id_mini)} zoneid need to reduce for out_id:{out_id}')
+        out_id_mini = out_id_mini.sort_values([ 'center_lon', 'center_lat'])
+        out_id_mini = out_id_mini.reset_index(drop=True)
+        zoneid_replaced = []
+        for index, cur in out_id_mini.iterrows():
+            logger.debug(f"=======Cur:{cur.zoneid}@out_id:{out_id}")
+            compare = out_id_mini[index+1:]
+            for next_i, next_ in compare.iterrows():
+                #logger.debug(f'{index}/{next_i}')
+                cur_dis = round(getDistance(cur.center_lat, cur.center_lon, next_.center_lat, next_.center_lon, ), )
+                cur_lon_threshold = round(abs(cur.center_lon - next_.center_lon) , 5)
+                if cur_lon_threshold > lon_threshold:
+                    logger.debug(f'cur_lon {cur_lon_threshold}:{cur.center_lon}, {next_.center_lon}')
+                    logger.debug(f'cur_lon {cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}, dis:{cur_dis}, over the lon threshold#{lon_threshold}')
+                    break
+                elif next_.zoneid in zoneid_replaced:
+                    logger.debug(f'{next_.zoneid} already in list#{zoneid_replaced}')
+                elif cur.zoneid in zoneid_replaced:
+                    logger.debug(f'{cur.zoneid} already in list#{zoneid_replaced}')
+                elif cur_dis <= threshold  :
+                    zoneid_replaced.append(next_.zoneid)
+                    merge_item = (next_.out_id, next_.zoneid, cur.zoneid, cur_dis,  )
+                    logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
+                    merge_list.append(merge_item)
+                else:
+                    logger.debug(f"Distance gap is {cur_dis}, cur_lon_threshold:{cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}")
+    return merge_list
+
+def adjust_add_with_centers(address_list, threshold):
+    old_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
+    reduce_list = get_center_address_need_reduce(address_list, threshold)
+    logger.debug(f'The reduce list is :{len(reduce_list)}')
+    for out_id, replace_zoneid, zoneid, dis_gap in reduce_list:
+        address_list.loc[(address_list.out_id==out_id) & (address_list.zoneid==replace_zoneid), 'zoneid'] = zoneid
+        logger.debug(f'{out_id}:{replace_zoneid} replace to {zoneid}, gap:{dis_gap}')
+    new_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
+    logger.debug(f"There are {old_len- new_len} zone is removed, current zone is {new_len},original is {old_len}")
+    return cal_center_of_zoneid(address_list)
 
 
 if __name__ == '__main__':
@@ -112,3 +213,5 @@ if __name__ == '__main__':
         logger.debug(df.shape)
         addressid = df[['out_id', 'zoneid']].drop_duplicates()
         logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
+
+    get_distance_zoneid(100, '358962079107966', 72, 73)

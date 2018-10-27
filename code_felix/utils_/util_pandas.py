@@ -11,7 +11,7 @@ try:
     plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
 
     pd.set_option('display.height', 1000)
-    pd.set_option('display.max_rows', 500)
+    pd.set_option('display.max_rows', 1000)
     pd.set_option('display.max_columns', 500)
     pd.set_option('display.width', 1000)
 except Exception as e:
@@ -61,3 +61,9 @@ def check_exception(df, index=None):
         return df.iloc[:3, :4]
     else:
         return pd.DataFrame()
+
+
+def flat_columns(df):
+    df.columns = ['_'.join(item) for item in df.columns]
+    df = df.reset_index()
+    return df

@@ -2,13 +2,15 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+from code_felix.utils_.util_log import *
+
+from code_felix.utils_.util_cache_file import *
+
 from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_pandas import *
 
 from math import radians, atan, tan, sin, acos, cos
-
+from functools import lru_cache
 
 DATA_DIR = './input'
 train_file = f'{DATA_DIR}/train.csv'
@@ -16,15 +18,34 @@ test_file = f'{DATA_DIR}/test.csv'
 
 
 
+@lru_cache()
 @file_cache(overwrite=True)
 def get_train_with_distance():
     train = get_time_extend(train_file)
     train['label'] = 'train'
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
-    train['distance_min' ] =   train.groupby('out_id')['distance'].transform( 'min')
-    train['distance_max' ] =   train.groupby('out_id')['distance'].transform( 'max')
-    train['distance_mean'] =   train.groupby('out_id')['distance'].transform( 'mean')
     return train
+
+@timed()
+def get_out_id_attr():
+    train = get_train_with_distance()
+    gp = train.groupby('out_id').agg({'distance':['min', 'max', 'mean']})
+    gp.columns = ['_'.join(item) for item in gp.columns]
+    return round(gp.reset_index())
+
+def fill_out_id_attr(df=None):
+    out_id_attr = get_out_id_attr()
+    if df is not None :
+        logger.debug(f"Fill df with {out_id_attr.columns}")
+        return pd.merge(df, out_id_attr, on='out_id', how='left')
+    else:
+        return out_id_attr
+
+
+
+def get_import_address():
+    train = get_train_with_adjust_position()
+
 
 #@file_cache()
 def get_time_extend(file):
@@ -42,10 +63,10 @@ def get_time_extend(file):
 
     return df
 
-def adjust_position(threshold):
-
+@file_cache(overwrite=True)
+def get_train_with_adjust_position(threshold):
     train = get_train_with_distance()
-    from code_felix.car.distance_reduce import reduce_address
+    from code_felix.car.distance_reduce import  reduce_address
     zoneid = reduce_address(threshold)
     zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
@@ -55,30 +76,28 @@ def adjust_position(threshold):
     zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
 
     all = pd.merge(all, zoneid, how='left',)
+    all = fill_out_id_attr(all)
+    return all
+
+@file_cache()
+def get_test_with_adjust_position(threshold):
+
+    test = get_time_extend(test_file)
+    from code_felix.car.distance_reduce import reduce_address
+    zoneid = reduce_address(threshold)
+    zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
+    zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+
+    all = pd.merge(test, zoneid, how='left', )
+    all = fill_out_id_attr(all)
     return all
 
 
-def getDistance(latA, lonA, latB, lonB):
-    ra = 6378140  # radius of equator: meter
-    rb = 6356755  # radius of polar: meter
-    flatten = (ra - rb) / ra  # Partial rate of the earth
-    # change angle to radians
-    radLatA = radians(latA)
-    radLonA = radians(lonA)
-    radLatB = radians(latB)
-    radLonB = radians(lonB)
 
-    try:
-        pA = atan(rb / ra * tan(radLatA))
-        pB = atan(rb / ra * tan(radLatB))
-        x = acos(sin(pA) * sin(pB) + cos(pA) * cos(pB) * cos(radLonA - radLonB))
-        c1 = (sin(x) - x) * (sin(pA) + sin(pB)) ** 2 / cos(x / 2) ** 2
-        c2 = (sin(x) + x) * (sin(pA) - sin(pB)) ** 2 / sin(x / 2) ** 2
-        dr = flatten / 8 * (c1 - c2)
-        distance = ra * (x + dr)
-        return distance  # meter
-    except:
-        return 0.0000001
+from code_felix.car.distance_reduce import get_center_address, getDistance
+from code_felix.car.utils import *
+
+
 
 
 def show_sample_in_map(sample):
@@ -146,5 +165,6 @@ def time_gap(t1, t2):
     return round(gap/24,2)
 
 if __name__ == '__main__':
-    df = adjust_position()
+    df = get_train_with_adjust_position()
     logger.debug(df.shape)
+
