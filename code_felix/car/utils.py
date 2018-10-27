@@ -31,7 +31,7 @@ def get_train_with_distance():
 def get_out_id_attr():
     train = get_train_with_distance()
     gp = train.groupby('out_id').agg({'distance':['min', 'max', 'mean']})
-    gp.columns = ['_'.join(item) for item in gp.columns]
+    gp = flat_columns(gp)
     return round(gp.reset_index())
 
 def fill_out_id_attr(df=None):
@@ -41,10 +41,21 @@ def fill_out_id_attr(df=None):
         return pd.merge(df, out_id_attr, on='out_id', how='left')
     else:
         return out_id_attr
+@timed()
+def get_end_zoneid_attr():
+    df = get_train_with_adjust_position(100)
+    gp = df.groupby(['out_id', 'end_zoneid']).agg({'last_date':['min', 'max', 'count']})
+    gp = flat_columns(gp)
+    return gp
 
-
-
-
+@timed()
+def fill_end_zone_attr(df=None):
+    end_zoneid = get_end_zoneid_attr()
+    if df is not None :
+        logger.debug(f"Fill df with {end_zoneid.columns}")
+        return pd.merge(df, end_zoneid, on=['out_id', 'end_zoneid'], how='left')
+    else:
+        return end_zoneid
 
 
 #@file_cache()

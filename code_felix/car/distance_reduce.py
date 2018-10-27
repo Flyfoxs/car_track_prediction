@@ -246,6 +246,9 @@ def get_home_company():
 
     train = get_train_with_adjust_position(100)
 
+
+
+
 if __name__ == '__main__':
     for threshold in range(50, 500, 50):
         df = reduce_address(threshold)
