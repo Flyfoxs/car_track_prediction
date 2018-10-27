@@ -92,7 +92,7 @@ def get_center_address(threshold):
     mini = df.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon',])
     return mini
 
-@file_cache(overwrite=False)
+@file_cache(overwrite=True)
 def reduce_address(threshold):
     # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat()
@@ -150,15 +150,23 @@ def getDistance(latA, lonA, latB, lonB):
     except:
         return 0.0000001
 
-def get_distance_zoneid(threshold, out_id, id1, id2):
+def get_distance_zoneid(threshold, out_id, id1, id2 ):
+    """
+    get_distance_zoneid(100, '358962079107966', 89, 105)
+    :param threshold:
+    :param out_id:
+    :param id1:
+    :param id2:
+    :return:
+    """
     df = get_center_address(threshold)
-    add1 = df[(df.out_id == out_id) & (df.zoneid == id1)]
-    add2 = df[(df.out_id == out_id) & (df.zoneid == id2)]
-    print(add1.center_lat.values, add1.center_lon, add2.center_lat, add2.center_lon)
-    dis = getDistance(add1.center_lat.values, add1.center_lon.values, add2.center_lat.values, add2.center_lon.values, )
+    add1 = df[(df.out_id==out_id) & (df.zoneid==id1)]
+    add2 = df[(df.out_id==out_id) & (df.zoneid==id2)]
+    #print(add1.center_lat, add1.center_lon, add2.center_lat, add2.center_lon, '==')
+    #print("====",add1.center_lat.values, "====")
+    dis = getDistance(add1.center_lat.values, add1.center_lon.values, add2.center_lat.values, add2.center_lon.values,)
     logger.debug(f'Distance between zoneids({id1} and {id2}) is <<{round(dis)}>> for car#{out_id}')
-    return add1
-
+    return dis
 
 def get_center_address_need_reduce(dis_with_zoneid,threshold):
     center_lat = cal_center_of_zoneid(dis_with_zoneid)

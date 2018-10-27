@@ -165,6 +165,6 @@ def time_gap(t1, t2):
     return round(gap/24,2)
 
 if __name__ == '__main__':
-    df = get_train_with_adjust_position()
+    df = get_train_with_adjust_position(100)
     logger.debug(df.shape)
 
