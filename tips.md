@@ -19,6 +19,7 @@
 * Distance/ClusterNumber bin
 * How many record over n times average
 * Drop long weekend
+* Each address arrive times, last time
 
 ## 
 

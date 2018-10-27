@@ -168,11 +168,12 @@ def get_distance_zoneid(threshold, out_id, id1, id2 ):
     logger.debug(f'Distance between zoneids({id1} and {id2}) is <<{round(dis)}>> for car#{out_id}')
     return dis
 
+@timed()
 def get_center_address_need_reduce(dis_with_zoneid,threshold):
     center_lat = cal_center_of_zoneid(dis_with_zoneid)
     mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])
     lon_threshold = 0.00001*threshold *2
-    merge_list = []
+    df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     for out_id in mini.out_id.drop_duplicates():
         out_id_mini = mini.loc[mini.out_id==out_id,:]
         logger.debug(f'Thre are {len(out_id_mini)} zoneid need to reduce for out_id:{out_id}')
@@ -187,33 +188,42 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
                 cur_dis = round(getDistance(cur.center_lat, cur.center_lon, next_.center_lat, next_.center_lon, ), )
                 cur_lon_threshold = round(abs(cur.center_lon - next_.center_lon) , 5)
                 if cur_lon_threshold > lon_threshold:
-                    logger.debug(f'cur_lon {cur_lon_threshold}:{cur.center_lon}, {next_.center_lon}')
-                    logger.debug(f'cur_lon {cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}, dis:{cur_dis}, over the lon threshold#{lon_threshold}')
+                    # logger.debug(f'cur_lon {cur_lon_threshold}:{cur.center_lon}, {next_.center_lon}')
+                    # logger.debug(f'cur_lon {cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}, dis:{cur_dis}, over the lon threshold#{lon_threshold}')
                     break
-                elif next_.zoneid in zoneid_replaced:
-                    logger.debug(f'{next_.zoneid} already in list#{zoneid_replaced}')
-                elif cur.zoneid in zoneid_replaced:
-                    logger.debug(f'{cur.zoneid} already in list#{zoneid_replaced}')
+                elif next_.zoneid in zoneid_replaced or cur.zoneid in zoneid_replaced:
+                    logger.debug(f'{next_.zoneid} or {cur.zoneid} already in list')
                 elif cur_dis <= threshold  :
                     zoneid_replaced.append(next_.zoneid)
                     merge_item = (next_.out_id, next_.zoneid, cur.zoneid, cur_dis,  )
+                    df.loc[len(df)] = [next_.out_id, next_.zoneid, cur.zoneid, cur_dis,]
+
                     logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
-                    merge_list.append(merge_item)
                 else:
                     logger.debug(f"Distance gap is {cur_dis}, cur_lon_threshold:{cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}")
-    return merge_list
+    logger.debug(f"There are {len(df)} zoneid need to merge")
+    return df
 
+@timed()
 def adjust_add_with_centers(address_list, threshold):
     old_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
     reduce_list = get_center_address_need_reduce(address_list, threshold)
-    logger.debug(f'The reduce list is :{len(reduce_list)}')
-    for out_id, replace_zoneid, zoneid, dis_gap in reduce_list:
-        address_list.loc[(address_list.out_id==out_id) & (address_list.zoneid==replace_zoneid), 'zoneid'] = zoneid
-        logger.debug(f'{out_id}:{replace_zoneid} replace to {zoneid}, gap:{dis_gap}')
+    logger.debug(f'The reduce list is :{len(reduce_list)}, \n {reduce_list}')
+    reduce_list = reduce_list[['out_id', 'zoneid', 'zoneid_new']]
+
+    address_list = pd.merge(address_list,reduce_list, how='left')
+    if 'zoneid_raw' not in address_list:
+        address_list['zoneid_raw'] = address_list['zoneid']
+
+    address_list['zoneid'] = np.where(pd.isna(address_list.zoneid_new), address_list.zoneid, address_list.zoneid_new)
+
     new_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
     logger.debug(f"There are {old_len- new_len} zone is removed, current zone is {new_len},original is {old_len}")
     return cal_center_of_zoneid(address_list)
 
+def get_home_company():
+
+    train = get_train_with_adjust_position(100)
 
 if __name__ == '__main__':
     for threshold in range(50, 500, 50):
