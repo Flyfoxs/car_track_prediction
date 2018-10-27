@@ -2,6 +2,8 @@ from code_felix.car.utils import *
 from code_felix.utils_.util_log import *
 from code_felix.utils_.util_date import *
 from code_felix.utils_.util_cache_file import *
+from multiprocessing import Pool as ThreadPool
+from functools import partial
 
 @timed()
 def cal_distance_gap_lat():
@@ -38,8 +40,7 @@ def cal_zoneid(df, distance_threshold):
     for index, df in gp:
         gp_list.append(df)
     logger.debug(f"Already split the gp to mini group:{len(gp_list)}")
-    from multiprocessing import Pool as ThreadPool
-    from functools import partial
+
     cal_mini_df_ex = partial(cal_mini_df,distance_threshold=distance_threshold )
     pool = ThreadPool(processes=8)
     results = pool.map(cal_mini_df_ex, gp_list)
@@ -172,37 +173,57 @@ def get_distance_zoneid(threshold, out_id, id1, id2 ):
 def get_center_address_need_reduce(dis_with_zoneid,threshold):
     center_lat = cal_center_of_zoneid(dis_with_zoneid)
     mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])
-    lon_threshold = 0.00001*threshold *2
-    df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
-    for out_id in mini.out_id.drop_duplicates():
+
+    out_id_list = mini.out_id.drop_duplicates()
+    logger.debug(f"There are {len(out_id_list)} out_id need to reduce ")
+    out_id_split_list = []
+    for out_id in out_id_list:
         out_id_mini = mini.loc[mini.out_id==out_id,:]
         logger.debug(f'Thre are {len(out_id_mini)} zoneid need to reduce for out_id:{out_id}')
         out_id_mini = out_id_mini.sort_values([ 'center_lon', 'center_lat'])
         out_id_mini = out_id_mini.reset_index(drop=True)
-        zoneid_replaced = []
-        for index, cur in out_id_mini.iterrows():
-            logger.debug(f"=======Cur:{cur.zoneid}@out_id:{out_id}")
-            compare = out_id_mini[index+1:]
-            for next_i, next_ in compare.iterrows():
-                #logger.debug(f'{index}/{next_i}')
-                cur_dis = round(getDistance(cur.center_lat, cur.center_lon, next_.center_lat, next_.center_lon, ), )
-                cur_lon_threshold = round(abs(cur.center_lon - next_.center_lon) , 5)
-                if cur_lon_threshold > lon_threshold:
-                    # logger.debug(f'cur_lon {cur_lon_threshold}:{cur.center_lon}, {next_.center_lon}')
-                    # logger.debug(f'cur_lon {cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}, dis:{cur_dis}, over the lon threshold#{lon_threshold}')
-                    break
-                elif next_.zoneid in zoneid_replaced or cur.zoneid in zoneid_replaced:
-                    logger.debug(f'{next_.zoneid} or {cur.zoneid} already in list')
-                elif cur_dis <= threshold  :
-                    zoneid_replaced.append(next_.zoneid)
-                    merge_item = (next_.out_id, next_.zoneid, cur.zoneid, cur_dis,  )
-                    df.loc[len(df)] = [next_.out_id, next_.zoneid, cur.zoneid, cur_dis,]
 
-                    logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
-                else:
-                    logger.debug(f"Distance gap is {cur_dis}, cur_lon_threshold:{cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}")
+        out_id_split_list.append(out_id_mini)
+
+    cal_reduce_center_add = partial(get_center_address_need_reduce_for_one_out_id, threshold= threshold)
+
+    pool = ThreadPool(processes=8)
+    results = pool.map(cal_reduce_center_add, out_id_split_list)
+    pool.close();
+    pool.join()
+
+    df = pd.concat(results)
+
     logger.debug(f"There are {len(df)} zoneid need to merge")
     return df
+
+def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
+    lon_threshold = 0.00001 * threshold * 2
+    df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
+    zoneid_replaced = []
+    for index, cur in out_id_mini.iterrows():
+        logger.debug(f"=======Cur:{cur.zoneid}@out_id:{cur.out_id}")
+        compare = out_id_mini[index + 1:]
+        for next_i, next_ in compare.iterrows():
+            # logger.debug(f'{index}/{next_i}')
+            cur_dis = round(getDistance(cur.center_lat, cur.center_lon, next_.center_lat, next_.center_lon, ), )
+            cur_lon_threshold = round(abs(cur.center_lon - next_.center_lon), 5)
+            if cur_lon_threshold > lon_threshold:
+                # logger.debug(f'cur_lon {cur_lon_threshold}:{cur.center_lon}, {next_.center_lon}')
+                # logger.debug(f'cur_lon {cur_lon_threshold}, cur/next:{cur.zoneid}/{next_.zoneid}, dis:{cur_dis}, over the lon threshold#{lon_threshold}')
+                break
+            elif next_.zoneid in zoneid_replaced or cur.zoneid in zoneid_replaced:
+                # logger.debug(f'{next_.zoneid} or {cur.zoneid} already in list')
+                pass
+            elif cur_dis <= threshold:
+                zoneid_replaced.append(next_.zoneid)
+                merge_item = (next_.out_id, next_.zoneid, cur.zoneid, cur_dis,)
+                df.loc[len(df)] = list(merge_item)
+                logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
+            else:
+                pass
+    return df
+
 
 @timed()
 def adjust_add_with_centers(address_list, threshold):
