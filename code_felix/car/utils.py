@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import matplotlib.pyplot as plt
+
 from code_felix.utils_.util_log import *
 
 from code_felix.utils_.util_cache_file import *
@@ -75,37 +76,51 @@ def get_time_extend(file):
     df['weekday'] = df.start_time.dt.weekday
     df['weekend'] = df.weekday // 5
     df['hour'] = round(df.start_time.dt.hour +df.start_time.dt.minute/60, 2)
-    df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
+    if 'end_time' in df:
+        df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
+    else:
+        df['duration'] = None
 
     return df
 
-@file_cache(overwrite=True)
-def get_train_with_adjust_position(threshold, train_file):
-    train = get_train_with_distance(train_file)
-    from code_felix.car.distance_reduce import  reduce_address
+
+def adjust_position_2_center(threshold, df):
+    from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
-    zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
-    zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+    zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
 
-    all = pd.merge(round(train, 6), round(zoneid,6), how='left', )
+    zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+    all = pd.merge(round(df, 6), round(zoneid, 6), how='left', )
+    all.start_zoneid = all.start_zoneid.astype(int)
 
-    zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
-
-    all = pd.merge(round(all,6), round(zoneid,6), how='left',)
-    all = fill_out_id_attr( train_file, all,)
+    if 'end_lat' in df:
+        zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
+        all = pd.merge(round(all, 6), round(zoneid, 6), how='left', )
+        all.end_zoneid = all.end_zoneid.astype(int)
     return all
 
-@file_cache()
+
+@file_cache(overwrite=False)
+def get_train_with_adjust_position(threshold, train_file):
+    train = get_train_with_distance(train_file)
+    all = adjust_position_2_center(threshold, train)
+
+    all = fill_out_id_attr( train_file, all,)
+    all = all.set_index('r_key')
+    all.drop(['index'], axis=1, inplace=True)
+    return all
+
+
+@file_cache(overwrite=False)
 def get_test_with_adjust_position(threshold, train_file, test_file):
 
     test = get_time_extend(test_file)
-    from code_felix.car.distance_reduce import reduce_address
-    zoneid = reduce_address(threshold)
-    zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
-    zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-    all = pd.merge(round(test,6), round(zoneid,6), how='left', )
+    all = adjust_position_2_center(threshold, test)
+
     all = fill_out_id_attr( train_file, all,)
+    all = all.set_index('r_key')
+    all.drop(['index'], axis=1, inplace=True)
     return all
 
 
@@ -126,6 +141,35 @@ def time_gap(t1, t2):
 def loss_fun(gap):
     import math
     return round(1/(1+math.exp((1000-gap)/250)), 5)
+
+
+def get_zone_inf(out_id, train, test):
+    mini_train = train[train.out_id==out_id]
+    #logger.debug(mini.columns)
+    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj']].drop_duplicates()
+    mini_train = mini_train.sort_values('end_zoneid').reset_index(drop=True)
+
+    predict_cols = ['predict_zone_id', 'predict_lat','predict_lon']
+    test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
+    test[predict_cols] = mini_train.loc[test.predict_id].values
+
+    return test
+
+
+def cal_loss_for_df(df):
+    from code_felix.car.distance_reduce import getDistance
+    if 'end_lat' in df:
+        df['loss_dis'] = df.apply(lambda row: getDistance(row.end_lat, row.end_lon, row.predict_lat, row.predict_lon ) , axis=1)
+        df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
+        final_loss = df.final_loss.mean()
+        out_id_len = len(df.out_id.drop_duplicates())
+        if out_id_len==1:
+            logger.debug(f'Final loss for {df.out_id[0]} is {final_loss}')
+        else:
+            logger.debug(f'Final loss for {out_id_len} out_id is {final_loss}')
+        return final_loss
+    else:
+        return None
 
 if __name__ == '__main__':
     df = get_train_with_adjust_position(150)

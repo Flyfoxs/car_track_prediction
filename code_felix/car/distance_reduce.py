@@ -89,13 +89,14 @@ def cal_distance_gap_center_lon(place_list):
         place_list.apply(lambda val: getDistance(val.lat_3, val.lon_3, val.center_lat, val.center_lon), axis=1))
     return place_list
 
+from functools import lru_cache
 @lru_cache()
 def get_center_address(threshold, train, test):
     df = reduce_address(threshold, train, test)
     mini = df.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon',])
     return mini
 
-@file_cache(overwrite=True)
+@file_cache(overwrite=False)
 def reduce_address(threshold):
     # Cal the distance from previous by lat
     distance_gap_lat = cal_distance_gap_lat(train_file, test_file)
