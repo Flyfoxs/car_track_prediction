@@ -13,17 +13,18 @@ from math import radians, atan, tan, sin, acos, cos
 from functools import lru_cache
 
 DATA_DIR = './input'
-train_file = f'{DATA_DIR}/train.csv'
-test_file = f'{DATA_DIR}/test.csv'
+
 
 train_train_file = f'{DATA_DIR}/train_train.csv'
 train_validate_file = f'{DATA_DIR}/train_validate.csv'
 
+train_file =  f'{DATA_DIR}/train.csv'
+test_file  =  f'{DATA_DIR}/test.csv'
 
 
 @lru_cache()
 @file_cache(overwrite=True)
-def get_train_with_distance():
+def get_train_with_distance(train_file):
     from code_felix.car.distance_reduce import getDistance
     train = get_time_extend(train_file)
     train['label'] = 'train'
@@ -31,14 +32,15 @@ def get_train_with_distance():
     return train
 
 @timed()
-def get_out_id_attr():
-    train = get_train_with_distance()
+def get_out_id_attr(file):
+    train = get_train_with_distance(file)
     gp = train.groupby('out_id').agg({'distance':['min', 'max', 'mean']})
     gp = flat_columns(gp)
     return round(gp.reset_index())
 
-def fill_out_id_attr(df=None):
-    out_id_attr = get_out_id_attr()
+@timed()
+def fill_out_id_attr(file, df=None, ):
+    out_id_attr = get_out_id_attr(file)
     if df is not None :
         logger.debug(f"Fill df with {out_id_attr.columns}")
         return pd.merge(df, out_id_attr, on='out_id', how='left')
@@ -46,7 +48,7 @@ def fill_out_id_attr(df=None):
         return out_id_attr
 @timed()
 def get_end_zoneid_attr():
-    df = get_train_with_adjust_position(100)
+    df = get_train_with_adjust_position(100,train_file, test_file)
     gp = df.groupby(['out_id', 'end_zoneid']).agg({'last_date':['min', 'max', 'count']})
     gp = flat_columns(gp)
     return gp
@@ -78,23 +80,23 @@ def get_time_extend(file):
     return df
 
 @file_cache(overwrite=True)
-def get_train_with_adjust_position(threshold):
-    train = get_train_with_distance()
+def get_train_with_adjust_position(threshold, train_file):
+    train = get_train_with_distance(train_file)
     from code_felix.car.distance_reduce import  reduce_address
     zoneid = reduce_address(threshold)
     zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-    all = pd.merge(train, zoneid, how='left', )
+    all = pd.merge(round(train, 6), round(zoneid,6), how='left', )
 
     zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
 
-    all = pd.merge(all, zoneid, how='left',)
-    all = fill_out_id_attr(all)
+    all = pd.merge(round(all,6), round(zoneid,6), how='left',)
+    all = fill_out_id_attr( train_file, all,)
     return all
 
 @file_cache()
-def get_test_with_adjust_position(threshold):
+def get_test_with_adjust_position(threshold, train_file, test_file):
 
     test = get_time_extend(test_file)
     from code_felix.car.distance_reduce import reduce_address
@@ -102,8 +104,8 @@ def get_test_with_adjust_position(threshold):
     zoneid = zoneid[['out_id','lat','lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns =  ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-    all = pd.merge(test, zoneid, how='left', )
-    all = fill_out_id_attr(all)
+    all = pd.merge(round(test,6), round(zoneid,6), how='left', )
+    all = fill_out_id_attr( train_file, all,)
     return all
 
 

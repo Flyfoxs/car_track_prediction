@@ -2,7 +2,7 @@
 import logging
 format_str = '%(asctime)s %(filename)s[%(lineno)d] %(levelname)s %(message)s'
 format = logging.Formatter(format_str)
-logging.basicConfig(level=logging.WARNING, format=format_str)
+logging.basicConfig(level=logging.DEBUG, format=format_str)
 
 logger = logging.getLogger()
 

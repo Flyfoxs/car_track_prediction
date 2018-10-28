@@ -5,10 +5,12 @@ from code_felix.utils_.util_cache_file import *
 from multiprocessing import Pool as ThreadPool
 from functools import partial
 
+test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
+
 @timed()
-def cal_distance_gap_lat():
-    train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])
-    test = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'])
+def cal_distance_gap_lat(train, test):
+    train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'])
+    test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], )
 
     df_list = [train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
@@ -88,15 +90,15 @@ def cal_distance_gap_center_lon(place_list):
     return place_list
 
 @lru_cache()
-def get_center_address(threshold):
-    df = reduce_address(threshold)
+def get_center_address(threshold, train, test):
+    df = reduce_address(threshold, train, test)
     mini = df.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon',])
     return mini
 
 @file_cache(overwrite=True)
 def reduce_address(threshold):
     # Cal the distance from previous by lat
-    distance_gap_lat = cal_distance_gap_lat()
+    distance_gap_lat = cal_distance_gap_lat(train_file, test_file)
     #Cal center of zoneid base on lat
     dis_with_zoneid =  cal_zoneid(distance_gap_lat,threshold)
     # Cal posiztion of center on lat
@@ -151,7 +153,7 @@ def getDistance(latA, lonA, latB, lonB):
     except:
         return 0.0000001
 
-def get_distance_zoneid(threshold, out_id, id1, id2 ):
+def get_distance_zoneid(threshold, out_id, id1, id2 , train, test):
     """
     get_distance_zoneid(100, '358962079107966', 89, 105)
     :param threshold:
@@ -160,7 +162,7 @@ def get_distance_zoneid(threshold, out_id, id1, id2 ):
     :param id2:
     :return:
     """
-    df = get_center_address(threshold)
+    df = get_center_address(threshold, train, test)
     add1 = df[(df.out_id==out_id) & (df.zoneid==id1)]
     add2 = df[(df.out_id==out_id) & (df.zoneid==id2)]
     #print(add1.center_lat, add1.center_lon, add2.center_lat, add2.center_lon, '==')
@@ -202,7 +204,7 @@ def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     zoneid_replaced = []
     for index, cur in out_id_mini.iterrows():
-        logger.debug(f"=======Cur:{cur.zoneid}@out_id:{cur.out_id}")
+        #logger.debug(f"=======Cur:{cur.zoneid}@out_id:{cur.out_id}")
         compare = out_id_mini[index + 1:]
         for next_i, next_ in compare.iterrows():
             # logger.debug(f'{index}/{next_i}')
@@ -219,7 +221,7 @@ def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
                 zoneid_replaced.append(next_.zoneid)
                 merge_item = (next_.out_id, next_.zoneid, cur.zoneid, cur_dis,)
                 df.loc[len(df)] = list(merge_item)
-                logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
+                #logger.debug('Merge %s#%s to %s, distance_gap:%s ' % merge_item)
             else:
                 pass
     return df
@@ -229,7 +231,7 @@ def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
 def adjust_add_with_centers(address_list, threshold):
     old_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
     reduce_list = get_center_address_need_reduce(address_list, threshold)
-    logger.debug(f'The reduce list is :{len(reduce_list)}, \n {reduce_list}')
+    logger.debug(f'The reduce list is :{len(reduce_list)}, \n {reduce_list[:10]}')
     reduce_list = reduce_list[['out_id', 'zoneid', 'zoneid_new']]
 
     address_list = pd.merge(address_list,reduce_list, how='left')
@@ -244,16 +246,22 @@ def adjust_add_with_centers(address_list, threshold):
 
 def get_home_company():
 
-    train = get_train_with_adjust_position(100)
+    train = get_train_with_adjust_position(100, train_file, test_file)
 
 
 
 
 if __name__ == '__main__':
-    for threshold in range(50, 500, 50):
-        df = reduce_address(threshold)
-        logger.debug(df.shape)
-        addressid = df[['out_id', 'zoneid']].drop_duplicates()
-        logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
+    #for threshold in range(50, 500, 50):
+    threshold = 100
 
-    get_distance_zoneid(100, '358962079107966', 72, 73)
+
+    df = reduce_address(threshold)
+    logger.debug(df.shape)
+    addressid = df[['out_id', 'zoneid']].drop_duplicates()
+    logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
+
+    df = get_train_with_adjust_position(100, train_train_file)
+    logger.debug(df.shape)
+
+    #get_distance_zoneid(100, '358962079107966', 72, 73, train_file, test_file)
