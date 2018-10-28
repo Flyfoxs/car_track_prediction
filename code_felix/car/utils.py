@@ -16,6 +16,9 @@ DATA_DIR = './input'
 train_file = f'{DATA_DIR}/train.csv'
 test_file = f'{DATA_DIR}/test.csv'
 
+train_train_file = f'{DATA_DIR}/train_train.csv'
+train_validate_file = f'{DATA_DIR}/train_validate.csv'
+
 
 
 @lru_cache()
@@ -123,7 +126,7 @@ def loss_fun(gap):
     return round(1/(1+math.exp((1000-gap)/250)), 5)
 
 if __name__ == '__main__':
-    df = get_train_with_adjust_position(100)
+    df = get_train_with_adjust_position(150)
     logger.debug(df.shape)
     #
     # print(loss_fun(0))

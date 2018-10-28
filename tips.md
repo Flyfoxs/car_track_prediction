@@ -9,6 +9,7 @@
 
 ## Test: 47493, 5
 * Car:5734 Overlap car with traing:5734
+* Avg 1 car has 10 records
 
 ## TIPS
 * time, week, Holiday
@@ -20,6 +21,11 @@
 * How many record over n times average
 * Drop long weekend
 * Each address arrive times, last time
+
+# Classfy
+* Top 10 multiple class:DC Tree
+* Top 10 KNN
+* 
 
 ## 
 
