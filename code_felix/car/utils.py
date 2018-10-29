@@ -24,7 +24,7 @@ test_file  =  f'{DATA_DIR}/test.csv'
 
 
 @lru_cache()
-@file_cache(overwrite=True)
+@file_cache(overwrite=False)
 def get_train_with_distance(train_file):
     from code_felix.car.distance_reduce import getDistance
     train = get_time_extend(train_file)
@@ -85,17 +85,25 @@ def get_time_extend(file):
 
 
 def adjust_position_2_center(threshold, df):
+    df.out_id = df.out_id.astype(str)
     from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
-    zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
+    zoneid.out_id = zoneid.out_id.astype(str)
 
+    zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
-    all = pd.merge(round(df, 6), round(zoneid, 6), how='left', )
+
+
+    all = pd.merge(round(df, 5), round(zoneid, 5), how='left', )
+    check_exception(round(all, 5), 'r_key')
+
+
+
     all.start_zoneid = all.start_zoneid.astype(int)
 
     if 'end_lat' in df:
         zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
-        all = pd.merge(round(all, 6), round(zoneid, 6), how='left', )
+        all = pd.merge(round(all, 5), round(zoneid, 5), how='left', )
         all.end_zoneid = all.end_zoneid.astype(int)
     return all
 

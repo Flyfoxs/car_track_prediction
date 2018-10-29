@@ -7,7 +7,7 @@ from functools import partial
 
 test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
-@timed()
+@file_cache(overwrite=True)
 def cal_distance_gap_lat(train, test):
     train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'])
     test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], )
@@ -20,9 +20,18 @@ def cal_distance_gap_lat(train, test):
     for df in df_list:
         df.columns = ['out_id', 'lat', 'lon']
 
+
+
     place_list = pd.concat(df_list)
     old_len = len(place_list)
+
+    place_list.out_id = place_list.out_id.astype(str)
+
+    place_list = round(place_list, 5)
     place_list = place_list.drop_duplicates()
+
+    place_list = place_list[place_list.out_id == '861661609024711']
+
     logger.debug(f"There are { old_len - len(place_list)} duplicates address drop from {old_len} records")
 
     place_list = place_list.sort_values(['out_id', 'lat', 'lon']).reset_index(drop=True)

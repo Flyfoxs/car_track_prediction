@@ -53,12 +53,14 @@ def check_exception(df, index=None):
     try:
         x, y = np.where(np.isinf(df.values) | np.isnan(df.values))
     except Exception as error:
-        print(df.dtypes.sort_values())
+        logger.debug(df.dtypes.sort_values())
         raise error
     if len(x)>0:
         print(x.min(), x.max()+1, y.min(), y.max()+1)
         df = df.iloc[x.min():(x.max()+1), y.min():(y.max()+1)]
-        return df.iloc[:3, :4]
+        error_part = df.iloc[:3, :4]
+        logger.debug(error_part)
+        return error_part
     else:
         return pd.DataFrame()
 
