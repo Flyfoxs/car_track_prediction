@@ -70,7 +70,10 @@ def get_time_extend(file):
         df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'])
     except:
         df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'])
+
     df.out_id = df.out_id.astype('str')
+    #df = df[df.out_id == '861661609024711']
+    df = round(df, 5)
     df['start_base'] = df.start_time.dt.date
     df['day'] = df.start_time.dt.day
     df['weekday'] = df.start_time.dt.weekday

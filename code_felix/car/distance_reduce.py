@@ -30,7 +30,6 @@ def cal_distance_gap_lat(train, test):
     place_list = round(place_list, 5)
     place_list = place_list.drop_duplicates()
 
-    place_list = place_list[place_list.out_id == '861661609024711']
 
     logger.debug(f"There are { old_len - len(place_list)} duplicates address drop from {old_len} records")
 
