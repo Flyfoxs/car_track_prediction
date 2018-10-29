@@ -44,6 +44,7 @@ def gen_sub(**kw):
 
     predict_list = []
     for out_id in test.out_id.drop_duplicates():
+        logger.debug("Begin to train the model for car:%s" % out_id)
         model = get_mode(out_id, train, **kw)
 
         test_mini = test[test.out_id == out_id]
