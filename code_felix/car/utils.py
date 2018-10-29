@@ -182,6 +182,7 @@ def cal_loss_for_df(df):
     else:
         return None
 
+
 if __name__ == '__main__':
     df = get_train_with_adjust_position(150)
     logger.debug(df.shape)

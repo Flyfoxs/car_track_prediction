@@ -44,10 +44,10 @@ def gen_sub(**kw):
 
     predict_list = []
     for out_id in test.out_id.drop_duplicates():
-        logger.debug("Begin to train the model for car:%s" % out_id)
-        model = get_mode(out_id, train, **kw)
-
         test_mini = test[test.out_id == out_id]
+        logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
+
+        model = get_mode(out_id, train, **kw)
         result = predict(model, test_mini)
         #logger.debug(result.shape)
         result = np.argmax(result, axis=1)
@@ -63,10 +63,14 @@ def gen_sub(**kw):
 
     predict_list = pd.concat(predict_list)
 
+    #Reorder predict result
+    predict_list = test.drop(test.columns, axis=1).join(predict_list)
 
     loss = cal_loss_for_df(predict_list)
     if loss:
         logger.debug(f"Loss is {loss}, args:{args}")
+
+
 
     sub = predict_list[['predict_lat', 'predict_lon']]
     sub.columns= ['end_lat','end_lon']

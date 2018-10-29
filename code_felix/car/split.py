@@ -10,7 +10,7 @@ test = pd.read_csv(test_file, delimiter=',')
 
 st = pd.to_datetime(train.start_time)
 
-validate = train[(st >= pd.to_datetime('2018-07-01') )& (st <= pd.to_datetime('2018-07-31'))].sample(len(test))
+validate = train[(st >= pd.to_datetime('2018-07-10') )& (st <= pd.to_datetime('2018-07-31'))].sample(len(test))
 validate.to_csv(train_validate_file,index=None)
 print(len(validate))
 
