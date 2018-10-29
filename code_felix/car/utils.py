@@ -191,15 +191,16 @@ def cal_loss_for_df(df):
     if 'end_lat' in df:
         df['loss_dis'] = df.apply(lambda row: getDistance(row.end_lat, row.end_lon, row.predict_lat, row.predict_lon ) , axis=1)
         df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
-        final_loss = df.final_loss.mean()
+        final_loss = round(df.final_loss.mean(), 5)
         out_id_len = len(df.out_id.drop_duplicates())
         if out_id_len==1:
-            logger.debug(f'Final loss for {df.out_id[0]} is {final_loss}')
+            logger.debug(f'loss is {final_loss}, for car:{df.out_id[0]} with {len(df)} records')
         else:
-            logger.debug(f'Final loss for {out_id_len} out_id is {final_loss}')
+            logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
         return None
+
 
 
 if __name__ == '__main__':

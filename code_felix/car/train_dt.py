@@ -32,9 +32,11 @@ def predict(model,  X):
 def gen_sub(**kw):
     args = locals()
 
+    # Validate file
     cur_train = train_train_file
     cur_test = train_validate_file
-    #
+
+    # Real get sub file
     # cur_train = train_file
     # cur_test = test_file
 
@@ -45,7 +47,7 @@ def gen_sub(**kw):
     predict_list = []
     for out_id in test.out_id.drop_duplicates():
         test_mini = test[test.out_id == out_id]
-        logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
+        #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
         model = get_mode(out_id, train, **kw)
         result = predict(model, test_mini)
@@ -83,7 +85,7 @@ def gen_sub(**kw):
 
 
 if __name__ == '__main__':
-    for max_depth in range(4, 6, 1):
+    for max_depth in range(4, 5, 1):
         gen_sub(max_depth = max_depth)
 
 

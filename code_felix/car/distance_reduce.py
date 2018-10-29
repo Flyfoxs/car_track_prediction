@@ -210,6 +210,7 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
     logger.debug(f"There are {len(df)} zoneid need to merge")
     return df
 
+@timed()
 def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
     lon_threshold = 0.00001 * threshold * 2
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
