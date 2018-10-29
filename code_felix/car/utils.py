@@ -88,7 +88,8 @@ def get_time_extend(file):
 
 
     df.out_id = df.out_id.astype('str')
-    #df = df[df.out_id == '861661609024711']
+    df = df[df.out_id == '2016061820000b']
+
     df = round(df, 5)
     df['start_base'] = df.start_time.dt.date
     df['day'] = df.start_time.dt.day
@@ -201,6 +202,14 @@ def cal_loss_for_df(df):
     else:
         return None
 
+
+# def clean_train_useless(df):
+#     df['last_time'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['start_time'].transform('max')
+#     df['times'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['out_id'].transform('count')
+#
+#     mini = df[df.last_time <= pd.to_datetime('2018-05-01')]
+#     mini = mini[mini.times <= 3]
+#     return df[~df.index.isin(mini.index)]
 
 
 if __name__ == '__main__':

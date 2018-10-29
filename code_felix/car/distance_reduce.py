@@ -23,6 +23,8 @@ def cal_distance_gap_lat(train, test):
 
 
     place_list = pd.concat(df_list)
+    place_list = place_list[place_list.out_id=='2016061820000b']
+
     old_len = len(place_list)
 
     place_list.out_id = place_list.out_id.astype(str)
@@ -210,8 +212,9 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
     logger.debug(f"There are {len(df)} zoneid need to merge")
     return df
 
-@timed()
+
 def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
+    logger.debug(f'Try to cal the centerid need to merge for out_id:{out_id_mini.at[0,"out_id"]}')
     lon_threshold = 0.00001 * threshold * 2
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     zoneid_replaced = []

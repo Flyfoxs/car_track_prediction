@@ -29,20 +29,25 @@ def predict(model,  X):
 
 
 @file_cache(overwrite=True)
-def gen_sub(**kw):
+def gen_sub(sub, threshold, **kw):
     args = locals()
 
-    # Validate file
-    cur_train = train_train_file
-    cur_test = train_validate_file
 
-    # Real get sub file
-    # cur_train = train_file
-    # cur_test = test_file
+    if sub:
+        # Real get sub file
+        cur_train = train_file
+        cur_test = test_file
+    else:
+        # Validate file
+        cur_train = train_train_file
+        cur_test = train_validate_file
 
-    threshold = 100
-    train = get_train_with_adjust_position(100, cur_train)
-    test = get_test_with_adjust_position(100, cur_train, cur_test)
+
+    train = get_train_with_adjust_position(threshold, cur_train)
+    # if clean:
+    #     train = clean_train_useless(train)
+
+    test = get_test_with_adjust_position(threshold, cur_train, cur_test)
 
     predict_list = []
     for out_id in test.out_id.drop_duplicates():
@@ -85,8 +90,11 @@ def gen_sub(**kw):
 
 
 if __name__ == '__main__':
-    for max_depth in range(4, 5, 1):
-        gen_sub(max_depth = max_depth)
+    for max_depth in [4]:
+        for threshold in [200, 180, 220]:
+            for sub in [True, False]:
+               # for clean in [True, False]:
+                    gen_sub(sub, threshold, max_depth = max_depth)
 
 
 
