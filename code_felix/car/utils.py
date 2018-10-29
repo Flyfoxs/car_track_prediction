@@ -19,8 +19,8 @@ DATA_DIR = './input'
 train_train_file = f'{DATA_DIR}/train_train.csv'
 train_validate_file = f'{DATA_DIR}/train_validate.csv'
 
-train_file =  f'{DATA_DIR}/train.csv'
-test_file  =  f'{DATA_DIR}/test.csv'
+train_file =  f'{DATA_DIR}/train_new.csv'
+test_file  =  f'{DATA_DIR}/test_new.csv'
 
 
 @lru_cache()
