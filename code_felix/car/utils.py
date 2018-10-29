@@ -36,6 +36,7 @@ test_dict = {'out_id': str,
               'start_lon': str,
               }
 
+mini_list = ['861661609024711','2016061820000b' ]
 
 #@lru_cache()
 @file_cache(overwrite=False)
@@ -88,7 +89,7 @@ def get_time_extend(file):
 
 
     df.out_id = df.out_id.astype('str')
-    df = df[df.out_id == '2016061820000b']
+    #df = df[df.out_id.isin(mini_list) ]
 
     df = round(df, 5)
     df['start_base'] = df.start_time.dt.date
@@ -108,12 +109,16 @@ def get_time_extend(file):
 def adjust_position_2_center(threshold, df):
     df.out_id = df.out_id.astype(str)
 
+    logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
     from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
     zoneid.out_id = zoneid.out_id.astype(str)
 
+
     zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+
+    logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
     all = pd.merge(df, zoneid, how='left', )
     check_exception(all ,'r_key')

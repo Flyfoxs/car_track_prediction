@@ -23,7 +23,7 @@ def cal_distance_gap_lat(train, test):
 
 
     place_list = pd.concat(df_list)
-    place_list = place_list[place_list.out_id=='2016061820000b']
+    #place_list = place_list[place_list.out_id.isin(mini_list)]
 
     old_len = len(place_list)
 

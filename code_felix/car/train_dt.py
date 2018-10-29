@@ -91,8 +91,8 @@ def gen_sub(sub, threshold, **kw):
 
 if __name__ == '__main__':
     for max_depth in [4]:
-        for threshold in [200, 180, 220]:
-            for sub in [True, False]:
+        for threshold in range(140, 260, 20):
+            for sub in [True]:
                # for clean in [True, False]:
                     gen_sub(sub, threshold, max_depth = max_depth)
 
