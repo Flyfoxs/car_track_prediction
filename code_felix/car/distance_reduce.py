@@ -9,8 +9,8 @@ test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
 @file_cache(overwrite=True)
 def cal_distance_gap_lat(train, test):
-    train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'])
-    test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], )
+    train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
+    test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
     df_list = [train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
@@ -37,8 +37,8 @@ def cal_distance_gap_lat(train, test):
 
     place_list['lat_2'] = place_list['lat'].shift(1)
     place_list['lon_2'] = place_list['lon'].shift(1)
-    place_list['gap'] = np.abs(place_list['lat_2'] - place_list['lat']) + np.abs(
-        place_list['lon_2'] - place_list['lon'])
+    # place_list['gap'] = np.abs(place_list['lat_2'] - place_list['lat']) + np.abs(
+    #     place_list['lon_2'] - place_list['lon'])
     place_list['distance_gap'] = round(
         place_list.apply(lambda val: getDistance(val.lat_2, val.lon_2, val.lat, val.lon), axis=1))
     return place_list
@@ -78,7 +78,9 @@ def cal_mini_df(mini, distance_threshold):
 
 @timed()
 def cal_center_of_zoneid(place_list):
-    place_list[['center_lat', 'center_lon']] = place_list.groupby(['out_id','zoneid'])[['lat', 'lon']].transform('mean')
+    place_list['lat_f'] = place_list.lat.astype(float)
+    place_list['lon_f'] = place_list.lon.astype(float)
+    place_list[['center_lat', 'center_lon']] = place_list.groupby(['out_id','zoneid'])[['lat_f', 'lon_f']].transform('mean')
 
     place_list['distance_2_center'] = round(
         place_list.apply(lambda val: getDistance(val.center_lat, val.center_lon, val.lat, val.lon), axis=1))
@@ -145,10 +147,10 @@ def getDistance(latA, lonA, latB, lonB):
     rb = 6356755  # radius of polar: meter
     flatten = (ra - rb) / ra  # Partial rate of the earth
     # change angle to radians
-    radLatA = radians(latA)
-    radLonA = radians(lonA)
-    radLatB = radians(latB)
-    radLonB = radians(lonB)
+    radLatA = radians(float(latA))
+    radLonA = radians(float(lonA))
+    radLatB = radians(float(latB))
+    radLonB = radians(float(lonB))
 
     try:
         pA = atan(rb / ra * tan(radLatA))

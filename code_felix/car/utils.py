@@ -22,8 +22,22 @@ train_validate_file = f'{DATA_DIR}/train_validate.csv'
 train_file =  f'{DATA_DIR}/train_new.csv'
 test_file  =  f'{DATA_DIR}/test_new.csv'
 
+train_dict = {'out_id': str,
+              'start_lat': str,
+              'start_lon': str,
+              'end_lat': str,
+              'end_lon': str,
 
-@lru_cache()
+              }
+
+
+test_dict = {'out_id': str,
+              'start_lat': str,
+              'start_lon': str,
+              }
+
+
+#@lru_cache()
 @file_cache(overwrite=False)
 def get_train_with_distance(train_file):
     from code_felix.car.distance_reduce import getDistance
@@ -66,10 +80,12 @@ def fill_end_zone_attr(df=None):
 
 #@file_cache()
 def get_time_extend(file):
+
     try:
-        df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'])
+        df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'], dtype=train_dict)
     except:
-        df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'])
+        df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'],   dtype=test_dict)
+
 
     df.out_id = df.out_id.astype('str')
     #df = df[df.out_id == '861661609024711']
@@ -87,8 +103,10 @@ def get_time_extend(file):
     return df
 
 
+
 def adjust_position_2_center(threshold, df):
     df.out_id = df.out_id.astype(str)
+
     from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
     zoneid.out_id = zoneid.out_id.astype(str)
@@ -96,18 +114,17 @@ def adjust_position_2_center(threshold, df):
     zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-
-    all = pd.merge(round(df, 5), round(zoneid, 5), how='left', )
-    check_exception(round(all, 5), 'r_key')
-
-
+    all = pd.merge(df, zoneid, how='left', )
+    check_exception(all ,'r_key')
 
     all.start_zoneid = all.start_zoneid.astype(int)
 
-    if 'end_lat' in df:
+    if 'end_time' in df:
         zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
-        all = pd.merge(round(all, 5), round(zoneid, 5), how='left', )
+        all = pd.merge(all, zoneid, how='left', )
+        check_exception(all, 'r_key')
         all.end_zoneid = all.end_zoneid.astype(int)
+
     return all
 
 
@@ -126,6 +143,8 @@ def get_train_with_adjust_position(threshold, train_file):
 def get_test_with_adjust_position(threshold, train_file, test_file):
 
     test = get_time_extend(test_file)
+    if 'end_time' in test:
+        del test['end_time']
 
     all = adjust_position_2_center(threshold, test)
 
