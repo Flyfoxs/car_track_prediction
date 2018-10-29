@@ -34,9 +34,9 @@ def gen_sub(**kw):
 
     cur_train = train_train_file
     cur_test = train_validate_file
-
-    cur_train = train_file
-    cur_test = test_file
+    #
+    # cur_train = train_file
+    # cur_test = test_file
 
     threshold = 100
     train = get_train_with_adjust_position(100, cur_train)
@@ -70,14 +70,13 @@ def gen_sub(**kw):
     if loss:
         logger.debug(f"Loss is {loss}, args:{args}")
 
-
-
-    sub = predict_list[['predict_lat', 'predict_lon']]
-    sub.columns= ['end_lat','end_lon']
-    sub.index.name = 'r_key'
-    sub_file = replace_invalid_filename_char(f'./output/result_{args}.csv')
-    sub.to_csv(sub_file)
-    logger.debug(f'Sub file is save to {sub_file}')
+    else:
+        sub = predict_list[['predict_lat', 'predict_lon']]
+        sub.columns= ['end_lat','end_lon']
+        sub.index.name = 'r_key'
+        sub_file = replace_invalid_filename_char(f'./output/result_{args}.csv')
+        sub.to_csv(sub_file)
+        logger.debug(f'Sub file is save to {sub_file}')
 
     return predict_list
 
