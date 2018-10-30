@@ -179,7 +179,7 @@ def get_distance_zoneid(threshold, out_id, id1, id2 , train, test):
     add1 = df[(df.out_id==out_id) & (df.zoneid==id1)]
     add2 = df[(df.out_id==out_id) & (df.zoneid==id2)]
     #print(add1.center_lat, add1.center_lon, add2.center_lat, add2.center_lon, '==')
-    #print("====",add1.center_lat.values, "====")
+    #print("====":add1.center_lat.values, "====")
     dis = getDistance(add1.center_lat.values, add1.center_lon.values, add2.center_lat.values, add2.center_lon.values,)
     logger.debug(f'Distance between zoneids({id1} and {id2}) is <<{round(dis)}>> for car#{out_id}')
     return dis
@@ -214,7 +214,7 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
 
 
 def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
-    logger.debug(f'Try to cal the centerid need to merge for out_id:{out_id_mini.at[0,"out_id"]}')
+    logger.debug(f'Cal the centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
     lon_threshold = 0.00001 * threshold * 2
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     zoneid_replaced = []

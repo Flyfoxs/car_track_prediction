@@ -2,9 +2,9 @@ from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 import pandas as pd
 import numpy as np
-train = pd.read_csv(train_file, delimiter=',')
+train = pd.read_csv(train_file, delimiter=',', dtype=train_dict)
 
-train.out_id = train.out_id.astype('str')
+
 
 test = pd.read_csv(test_file, delimiter=',')
 

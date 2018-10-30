@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from code_felix.car.holiday import get_holiday
 from code_felix.utils_.util_log import *
 
 from code_felix.utils_.util_cache_file import *
@@ -93,6 +94,7 @@ def get_time_extend(file):
 
     df = round(df, 5)
     df['start_base'] = df.start_time.dt.date
+    df['holiday'] = df.start_time.dt.date.apply(lambda val: get_holiday(val))
     df['day'] = df.start_time.dt.day
     df['weekday'] = df.start_time.dt.weekday
     df['weekend'] = df.weekday // 5

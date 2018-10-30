@@ -21,6 +21,11 @@
 * How many record over n times average
 * Drop long weekend
 * Each address arrive times, last time
+* Group remaining address by long gap
+* cal speed, then label the tracking type
+* Len of the holiday
+* Remain of the holiday
+* start_zone far from the home
 
 # Classfy
 * Top 10 multiple class:DC Tree

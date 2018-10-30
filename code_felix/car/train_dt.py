@@ -4,7 +4,9 @@ from code_felix.car.distance_reduce import *
 # 'end_lat_adj', 'end_lon_adj','duration',  'end_lat', 'end_lon',  'day','start_lat_adj', 'start_lon_adj',
 from code_felix.utils_.other import replace_invalid_filename_char
 
-feature_col = ['weekday', 'weekend','hour','start_zoneid', ]
+feature_col = ['weekday', 'weekend', #'weekday',
+               #'holiday',
+               'hour','start_zoneid', ]
 
 def get_features(out_id, df):
     df = df[df.out_id == out_id]
@@ -91,8 +93,8 @@ def gen_sub(sub, threshold, **kw):
 
 if __name__ == '__main__':
     for max_depth in [4]:
-        for threshold in range(140, 260, 20):
-            for sub in [True]:
+        for threshold in range(40, 100, 20):
+            for sub in [False,True]:
                # for clean in [True, False]:
                     gen_sub(sub, threshold, max_depth = max_depth)
 
