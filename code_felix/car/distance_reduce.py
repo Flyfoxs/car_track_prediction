@@ -7,8 +7,13 @@ from functools import partial
 
 test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
-@file_cache(overwrite=True)
-def cal_distance_gap_lat(train, test):
+@file_cache()
+def cal_distance_gap_and_zoneid(train, test, threshold):
+    sorted_address = sort_address_and_cal_gap(train, test)
+    address_with_zoneid = cal_zoneid_base_on_gap(sorted_address, threshold)
+    return address_with_zoneid
+
+def sort_address_and_cal_gap(train, test):
     train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
     test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
@@ -20,18 +25,15 @@ def cal_distance_gap_lat(train, test):
     for df in df_list:
         df.columns = ['out_id', 'lat', 'lon']
 
-
-
     place_list = pd.concat(df_list)
-    #place_list = place_list[place_list.out_id.isin(mini_list)]
+    # place_list = place_list[place_list.out_id.isin(mini_list)]
 
     old_len = len(place_list)
 
     place_list.out_id = place_list.out_id.astype(str)
 
-    place_list = round(place_list, 5)
+    # place_list = round(place_list, 5)
     place_list = place_list.drop_duplicates()
-
 
     logger.debug(f"There are { old_len - len(place_list)} duplicates address drop from {old_len} records")
 
@@ -46,7 +48,7 @@ def cal_distance_gap_lat(train, test):
     return place_list
 
 @timed()
-def cal_zoneid(df, distance_threshold):
+def cal_zoneid_base_on_gap(df, distance_threshold):
     gp = df.groupby('out_id')
     gp_list = []
     for index, df in gp:
@@ -67,7 +69,7 @@ def cal_mini_df(mini, distance_threshold):
     mini = mini.reset_index(drop=True)
     for index, item in mini.iterrows():
         if index == 0:
-            mini.loc[index, 'zoneid'] = 0
+            mini.loc[index, 'zoneid'] = 100
         elif item.distance_gap <= distance_threshold:
             mini.loc[index, 'zoneid'] = mini.loc[index - 1, 'zoneid']
         else:
@@ -110,12 +112,11 @@ def get_center_address(threshold, train, test):
 
 @file_cache(overwrite=False)
 def reduce_address(threshold):
-    # Cal the distance from previous by lat
-    distance_gap_lat = cal_distance_gap_lat(train_file, test_file)
-    #Cal center of zoneid base on lat
-    dis_with_zoneid =  cal_zoneid(distance_gap_lat,threshold)
-    # Cal posiztion of center on lat
 
+    #Cal center of zoneid base on lat
+    dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(50, threshold))
+
+    # Cal posiztion of center on lat
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
@@ -188,6 +189,7 @@ def get_distance_zoneid(threshold, out_id, id1, id2 , train, test):
 def get_center_address_need_reduce(dis_with_zoneid,threshold):
     center_lat = cal_center_of_zoneid(dis_with_zoneid)
     mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])
+    mini  = mini[mini.zoneid >=100]
 
     out_id_list = mini.out_id.drop_duplicates()
     logger.debug(f"There are {len(out_id_list)} out_id need to reduce ")

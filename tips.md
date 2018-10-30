@@ -24,8 +24,8 @@
 * Group remaining address by long gap
 * cal speed, then label the tracking type
 * Len of the holiday
-* Remain of the holiday
-* start_zone far from the home
+* Remain of the holiday 
+* Reduce the start_zone far from the home and low frequency
 
 # Classfy
 * Top 10 multiple class:DC Tree
