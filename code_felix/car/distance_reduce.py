@@ -114,13 +114,17 @@ def get_center_address(threshold, train, test):
 def reduce_address(threshold):
 
     #Cal center of zoneid base on lat
-    dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(50, threshold))
+    dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(100, threshold))
 
     # Cal posiztion of center on lat
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
     return dis_with_zoneid
+
+#Far from the home&company, and only 1 or 2 times
+def pickup_stable_zoneid(adress_with_zoneid):
+    pass
 
 # def reduce_center_address(center_lat,threshold):
 #     mini = center_lat.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon', ])

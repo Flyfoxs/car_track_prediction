@@ -1,3 +1,5 @@
+from sklearn.ensemble import RandomForestClassifier
+
 from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
@@ -15,9 +17,10 @@ def get_features(out_id, df):
     return df[feature_col] , df['end_zoneid']
 
 def train_model(X, Y, **kw):
-    from sklearn import tree
-    clf = tree.DecisionTreeClassifier(**kw)
+    clf = RandomForestClassifier(n_estimators=100, **kw, random_state=0)
+
     clf = clf.fit(X, Y)
+    print(clf.feature_importances_)
     return clf
 
 def get_mode(out_id, df, **kw):
@@ -53,7 +56,7 @@ def gen_sub(sub, threshold, **kw):
 
     predict_list = []
     for out_id in test.out_id.drop_duplicates():
-        test_mini = test[test.out_id == out_id]
+        test_mini = test.loc[test.out_id == out_id]
         #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
         model = get_mode(out_id, train, **kw)
@@ -78,12 +81,11 @@ def gen_sub(sub, threshold, **kw):
     loss = cal_loss_for_df(predict_list)
     if loss:
         logger.debug(f"Loss is {loss}, args:{args}")
-
     else:
         sub = predict_list[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
-        sub_file = replace_invalid_filename_char(f'./output/result_dt_{args}.csv')
+        sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
         sub.to_csv(sub_file)
         logger.debug(f'Sub file is save to {sub_file}')
 
@@ -92,9 +94,9 @@ def gen_sub(sub, threshold, **kw):
 
 
 if __name__ == '__main__':
-    for max_depth in [4]:
-        for threshold in range(300, 600, 100):
-            for sub in [True, False,]:
+    for max_depth in [4, 5]:
+        for threshold in [220, 300, 400, 500]:
+            for sub in [True,False,]:
                # for clean in [True, False]:
                     gen_sub(sub, threshold, max_depth = max_depth)
 

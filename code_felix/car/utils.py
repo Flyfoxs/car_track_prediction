@@ -207,6 +207,7 @@ def cal_loss_for_df(df):
             logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
+        logger.debug(f'Sub model, for car:{df.out_id[0]} with {len(df)} records')
         return None
 
 
