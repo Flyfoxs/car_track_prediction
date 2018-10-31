@@ -27,7 +27,7 @@ def train_model(X, Y, **kw):
 
 
     import lightgbm as lgb
-    param = {'num_leaves': 31, 'num_trees': 10, 'verbose': -1,'max_depth': 3,
+    param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
              'num_class': num_class,
              'objective': 'multiclass',
              **get_gpu_paras('lgb')}
@@ -39,7 +39,7 @@ def train_model(X, Y, **kw):
     train_data = lgb.Dataset(X, label=Y)
     test_data = lgb.Dataset(X, label=Y, reference=train_data)
 
-    num_round = 10
+    num_round = kw['num_round']
     bst = lgb.train(param, train_data, num_round, valid_sets=[test_data], verbose_eval=False)
 
     #logger.debug(clf.feature_importances_)
@@ -142,12 +142,12 @@ def get_zone_id(predict_id, train, out_id):
 
 
 if __name__ == '__main__':
-    for max_depth in [3,4]:
-        for sub in [False, ]:
+    for num_round in range(10, 50, 10):
+        for sub in [False, True ]:
             #for adjust_test in [False, True]:
-            for estimator in range(50, 300, 50):
-                for threshold in[ 100, ]: #1000,2000 ,300, 400, 500,
-                    gen_sub(sub, threshold,  max_depth = max_depth, n_estimators=estimator,)
+            #for estimator in range(50, 300, 50):
+                for threshold in[ 400,500,600 ]: #1000,2000 ,300, 400, 500,
+                    gen_sub(sub, threshold,  num_round = num_round, )
 
 
 
