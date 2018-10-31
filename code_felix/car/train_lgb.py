@@ -4,7 +4,7 @@ from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
 # 'end_lat_adj', 'end_lon_adj','duration',  'end_lat', 'end_lon',  'day','start_lat_adj', 'start_lon_adj',
-from code_felix.utils_.other import replace_invalid_filename_char
+from code_felix.utils_.other import replace_invalid_filename_char, get_gpu_paras
 
 feature_col = ['weekday', 'weekend', #'weekday',
                #'holiday',
@@ -17,11 +17,33 @@ def get_features(out_id, df):
     return df[feature_col] , df['end_zoneid']
 
 def train_model(X, Y, **kw):
-    clf = RandomForestClassifier( **kw, random_state=0)
+    replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
+    #logger.debug(replace_map)
+    #logger.debug(type(Y))
+    Y.replace(dict(zip(replace_map.end_zoneid, replace_map.index)),  inplace=True)
 
-    clf = clf.fit(X, Y)
+    num_class = len(Y.drop_duplicates())
+    #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
+
+
+    import lightgbm as lgb
+    param = {'num_leaves': 31, 'num_trees': 10, 'verbose': -1,'max_depth': 3,
+             'num_class': num_class,
+             'objective': 'multiclass',
+             **get_gpu_paras('lgb')}
+    param['metric'] = ['auc', 'multi_logloss']
+
+
+    # 'num_leaves':num_leaves,
+
+    train_data = lgb.Dataset(X, label=Y)
+    test_data = lgb.Dataset(X, label=Y, reference=train_data)
+
+    num_round = 10
+    bst = lgb.train(param, train_data, num_round, valid_sets=[test_data], verbose_eval=False)
+
     #logger.debug(clf.feature_importances_)
-    return clf
+    return bst
 
 def get_mode(out_id, df, **kw):
     X, Y = get_features(out_id, df)
@@ -30,7 +52,7 @@ def get_mode(out_id, df, **kw):
 
 def predict(model,  X):
     #X = df[df.out_id==out_id]
-    return model.predict_proba(X[feature_col])
+    return model.predict(X[feature_col])
 
 
 #@file_cache(overwrite=True)
@@ -64,23 +86,29 @@ def gen_sub(sub, threshold, **kw):
     # test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
 
     for out_id in test.out_id.drop_duplicates():
-        #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
+        #logger.debug(f"Begin to train the model for car:{out_id}" )
 
-        model = get_mode(out_id, train, **kw)
-        result = predict(model, test.loc[test.out_id == out_id])
-        #logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
-        #logger.debug(result.shape)
-        predict_id = np.argmax(result, axis=1)
-        test.loc[test.out_id == out_id, 'predict_id'] = predict_id
+        classes_num = len(train[train.out_id==out_id].end_zoneid.drop_duplicates())
+        if classes_num==1:
+            test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
+            test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id==out_id].end_zoneid[0]
+            logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {result.shape} records')
+        else:
+            model = get_mode(out_id, train, **kw)
+            result = predict(model, test.loc[test.out_id == out_id])
+            #logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
+            #logger.debug(result.shape)
+            predict_id = np.argmax(result, axis=1)
+            test.loc[test.out_id == out_id, 'predict_id'] = predict_id
 
-        #logger.debug(f'out_id:{out_id}, ')
-        # if out_id == '861181511140011':
-        #     :(result)
-        predict_zoneid = get_zone_id(predict_id, train, out_id)
+            #logger.debug(f'out_id:{out_id}, ')
+            # if out_id == '861181511140011':
+            #     :(result)
+            predict_zoneid = get_zone_id(predict_id, train, out_id)
 
-        test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
+            test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
 
-        logger.debug(f'Finish the predict for outid:{out_id}, {result.shape} records')
+            logger.debug(f'Finish the predict for outid:{out_id}, {result.shape} records')
 
     test = get_zone_inf( test, threshold)
 
@@ -91,12 +119,12 @@ def gen_sub(sub, threshold, **kw):
 
     loss = cal_loss_for_df(test)
     if loss:
-        logger.debug(f"Loss is {loss}, args:{args}")
+        logger.debug(f"Loss is {loss}, LGB args:{args}")
     else:
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
-        sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
+        sub_file = replace_invalid_filename_char(f'./output/result_lgb_{args}.csv')
         sub.to_csv(sub_file)
         logger.debug(f'Sub file is save to {sub_file}')
 
@@ -114,11 +142,11 @@ def get_zone_id(predict_id, train, out_id):
 
 
 if __name__ == '__main__':
-    for max_depth in [4]:
+    for max_depth in [3,4]:
         for sub in [False, ]:
             #for adjust_test in [False, True]:
-            for estimator in range(4, 10, 2):
-                for threshold in[500]: #1000,2000 ,300, 400, 500,
+            for estimator in range(50, 300, 50):
+                for threshold in[ 100, ]: #1000,2000 ,300, 400, 500,
                     gen_sub(sub, threshold,  max_depth = max_depth, n_estimators=estimator,)
 
 

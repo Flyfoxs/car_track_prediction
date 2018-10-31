@@ -3,7 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from code_felix.car.distance_reduce import reduce_address
+from code_felix.car.distance_reduce import reduce_address, getDistance
 from code_felix.car.holiday import get_holiday
 from code_felix.utils_.util_log import *
 
@@ -161,6 +161,47 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
     return all
+
+
+def adjust_new_zoneid_in_test(threshold, test_df, train_file):
+    train_df = get_train_with_adjust_position(threshold, train_file)
+    print(len(test_df.columns))
+    test_need_adjust = pd.merge(test_df, train_df[['out_id', 'start_zoneid', 'end_time']],
+                                on=['out_id', 'start_zoneid'], how='left')
+
+    test_need_adjust = test_need_adjust[
+        ['out_id', 'start_zoneid', 'start_lat', 'start_lon', 'start_time', 'end_time']]  # The address only in test
+    print(test_need_adjust.columns)
+    test_need_adjust = test_need_adjust[pd.isnull(test_need_adjust.end_time)]
+
+    test_need_adjust = test_need_adjust.drop_duplicates(['out_id', 'start_zoneid', ])
+
+    test_need_adjust = test_need_adjust.reset_index(drop=True)
+    test_df['new_zoneid'] = None
+
+    # The address in train
+    all_address = reduce_address(threshold)
+    all_address = pd.merge(all_address, test_need_adjust, left_on=['out_id', 'zoneid'],
+                           right_on=['out_id', 'start_zoneid'], how='left')
+    train_address = all_address[pd.isnull(all_address.start_time)]
+
+    for index, test in test_need_adjust.iterrows():
+        out_id = test.out_id
+        min_gap = 99999999;
+        min_zone_id = None
+        for _, train in train_address.loc[train_address.out_id == out_id].iterrows():
+            distance_gap = getDistance(test.start_lat, test.start_lon, train.center_lat, train.center_lon)
+            if distance_gap <= min_gap:
+                min_gap = distance_gap
+                min_zone_id = train.zoneid
+        test_df.loc[test_df.start_zoneid == test.start_zoneid, 'new_zoneid'] = min_zone_id
+
+    # test_df = pd.merge(test_df, test_need_adjust[['out_id', 'start_zoneid']], on=['out_id', 'start_zoneid'], how='left')
+
+    test_df['start_zoneid'] = test_df.apply(lambda row: row.start_zoneid if row.new_zoneid is None else row.new_zoneid,
+                                            axis=1)
+    print(len(test_df.columns))
+    return test_df
 
 
 def get_distance_color(distance, avg):

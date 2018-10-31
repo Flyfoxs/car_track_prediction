@@ -2,9 +2,18 @@ from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 import pandas as pd
 import numpy as np
-train = pd.read_csv(train_file, delimiter=',', dtype=train_dict)
-outid_list = train.out_id.drop_duplicates()[:100]
 
+import sys
+if len(sys.argv)>1:
+    num_sample =  int(sys.argv[1])
+else:
+    num_sample = 200
+print("====num_sample:", num_sample)
+
+train = pd.read_csv('./input/del/train_new.csv', delimiter=',', dtype=train_dict)
+outid_list = train.out_id.drop_duplicates().sample(num_sample)
+
+print(f'outid_len:{len(outid_list)}')
 train = train[train.out_id.isin(outid_list)]
 
 st = pd.to_datetime(train.start_time)
