@@ -57,18 +57,18 @@ def gen_sub(sub, threshold, **kw):
         #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
         model = get_mode(out_id, train, **kw)
-        result = predict(model, test_mini)
+        result = predict(model, test[test.out_id == out_id])
         #logger.debug(result.shape)
         result = np.argmax(result, axis=1)
         #logger.debug(result)
 
-        test_mini['predict_id'] = result
+        test.loc[test.out_id == out_id, 'predict_id'] = result
 
         predict_result = get_zone_inf(out_id, train, test_mini)
 
-        predict_list.append(predict_result)
-
-        cal_loss_for_df(predict_result)
+        # predict_list.append(predict_result)
+        #
+        # cal_loss_for_df(predict_result)
 
     predict_list = pd.concat(predict_list)
 

@@ -26,6 +26,9 @@
 * Len of the holiday
 * Remain of the holiday 
 * Reduce the start_zone far from the home and low frequency
+* module emsemble
+* diff car with diff distance threshold
+* find the close add for test data
 
 # Classfy
 * Top 10 multiple class:DC Tree

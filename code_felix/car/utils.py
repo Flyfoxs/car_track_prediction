@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from code_felix.car.distance_reduce import reduce_address
 from code_felix.car.holiday import get_holiday
 from code_felix.utils_.util_log import *
 
@@ -11,7 +12,7 @@ from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_pandas import *
 
-from math import radians, atan, tan, sin, acos, cos
+
 from functools import lru_cache
 
 DATA_DIR = './input'
@@ -111,7 +112,7 @@ def get_time_extend(file):
 def adjust_position_2_center(threshold, df):
     df.out_id = df.out_id.astype(str)
 
-    logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
+    #logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
     from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
     zoneid.out_id = zoneid.out_id.astype(str)
@@ -120,10 +121,10 @@ def adjust_position_2_center(threshold, df):
     zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-    logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
+    #logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
     all = pd.merge(df, zoneid, how='left', )
-    check_exception(all ,'r_key')
+    #check_exception(all ,'r_key')
 
     all.start_zoneid = all.start_zoneid.astype(int)
 
@@ -181,15 +182,27 @@ def loss_fun(gap):
     return round(1/(1+math.exp((1000-gap)/250)), 5)
 
 
-def get_zone_inf(out_id, train, test):
-    mini_train = train[train.out_id==out_id]
+def get_zone_inf( test, threshold):
     #logger.debug(mini.columns)
-    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj']].drop_duplicates()
-    mini_train = mini_train.sort_values('end_zoneid').reset_index(drop=True)
 
-    predict_cols = ['predict_zone_id', 'predict_lat','predict_lon']
-    test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
-    test[predict_cols] = mini_train.loc[test.predict_id].values
+    zoneid = reduce_address(threshold)
+    zoneid = zoneid[['out_id', 'zoneid', 'center_lat', 'center_lon']]#.drop_duplicates()
+    zoneid.columns = ['out_id', 'predict_zone_id', 'predict_lat', 'predict_lon']
+
+    #zoneid = zoneid.sort_values(['out_id','predict_zone_id']).reset_index(drop=True)
+    #zoneid['predict_id'] = zoneid.groupby(['out_id'])['predict_zone_id'].cumcount()
+
+    # print('===='*10, threshold)
+    # print(zoneid.loc[(zoneid.out_id=='861181511140011') & (zoneid.predict_id==7) ])
+
+    #print(test.loc[(test.out_id=='861181511140011') & (test.predict_id==7) ][['out_id','predict_id']])
+    test = pd.merge(test, zoneid, how='left', on=['out_id','predict_zone_id'])
+
+    #print(test.loc[(test.out_id == '861181511140011') & (test.predict_id == 7)][['out_id','predict_id','predict_zone_id']])
+    logger.debug(test[['out_id','predict_id', 'predict_zone_id', 'predict_lat', 'predict_lon']])
+
+    # test.loc[test.out_id==out_id, ['predict_zone_id', 'predict_lat', 'predict_lon']] \
+    #     = mini_train.loc[test.loc[test.out_id==out_id].predict_id].values
 
     return test
 

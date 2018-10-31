@@ -114,6 +114,7 @@ def get_center_address(threshold, train, test):
 def reduce_address(threshold):
 
     #Cal center of zoneid base on lat
+    from code_felix.car.utils import train_file, test_file
     dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(100, threshold))
 
     # Cal posiztion of center on lat
@@ -150,6 +151,7 @@ def pickup_stable_zoneid(adress_with_zoneid):
 
 
 def getDistance(latA, lonA, latB, lonB):
+    from math import radians, atan, tan, sin, acos, cos
     ra = 6378140  # radius of equator: meter
     rb = 6356755  # radius of polar: meter
     flatten = (ra - rb) / ra  # Partial rate of the earth
