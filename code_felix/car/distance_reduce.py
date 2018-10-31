@@ -1,9 +1,8 @@
-from code_felix.car.utils import *
-from code_felix.utils_.util_log import *
-from code_felix.utils_.util_date import *
-from code_felix.utils_.util_cache_file import *
-from multiprocessing import Pool as ThreadPool
 from functools import partial
+from multiprocessing import Pool as ThreadPool
+
+from code_felix.car.utils import *
+from code_felix.utils_.util_cache_file import *
 
 test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
@@ -14,6 +13,7 @@ def cal_distance_gap_and_zoneid(train, test, threshold):
     return address_with_zoneid
 
 def sort_address_and_cal_gap(train, test):
+    from code_felix.car.utils import train_dict, test_dict
     train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
     test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 

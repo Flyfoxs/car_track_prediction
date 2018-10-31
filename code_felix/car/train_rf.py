@@ -70,14 +70,14 @@ def gen_sub(sub, threshold, **kw):
         predict_id = np.argmax(result, axis=1)
         test.loc[test.out_id == out_id, 'predict_id'] = predict_id
 
-        logger.debug(f'out_id:{out_id}, {result.shape}, predict_result: {result}')
+        #logger.debug(f'out_id:{out_id}, ')
         # if out_id == '861181511140011':
         #     :(result)
         predict_zoneid = get_zone_id(predict_id, train, out_id)
 
         test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
 
-        logger.debug(f'Finish the predict for outid:{out_id}, and {len(result)} records')
+        logger.debug(f'Finish the predict for outid:{out_id}, {result.shape} records')
 
     test = get_zone_inf( test, threshold)
 
@@ -104,7 +104,7 @@ def get_zone_id(predict_id, train, out_id):
     mini = mini.end_zoneid.sort_values().drop_duplicates()
     mini = mini.reset_index(drop=True)
     zone_id = mini.loc[predict_id].values
-    logger.debug(f'Convert {predict_id} to {zone_id}')
+    #logger.debug(f'Convert {predict_id} to {zone_id}')
     return zone_id
 
 
@@ -112,8 +112,8 @@ def get_zone_id(predict_id, train, out_id):
 
 if __name__ == '__main__':
     for max_depth in [4]:
-        for sub in [True, False, ]:
-            for threshold in[1000,2000 ,300, 400, 500, 220, ]:
+        for sub in [False, ]:
+            for threshold in[ 220, ]: #1000,2000 ,300, 400, 500,
                     gen_sub(sub, threshold, max_depth = max_depth)
 
 

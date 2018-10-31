@@ -199,7 +199,7 @@ def get_zone_inf( test, threshold):
     test = pd.merge(test, zoneid, how='left', on=['out_id','predict_zone_id'])
 
     #print(test.loc[(test.out_id == '861181511140011') & (test.predict_id == 7)][['out_id','predict_id','predict_zone_id']])
-    logger.debug(test[['out_id','predict_id', 'predict_zone_id', 'predict_lat', 'predict_lon']])
+    #logger.debug(test[['out_id','predict_id', 'predict_zone_id', 'predict_lat', 'predict_lon']])
 
     # test.loc[test.out_id==out_id, ['predict_zone_id', 'predict_lat', 'predict_lon']] \
     #     = mini_train.loc[test.loc[test.out_id==out_id].predict_id].values
