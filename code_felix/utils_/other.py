@@ -71,7 +71,7 @@ def get_gpu_paras(kind='lgb'):
     import os
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
         if kind == 'lgb':
-            gpu_params = {'device': 'gpu'}
+            gpu_params = {'device': 'gpu', 'gpu_platform_id': 0,'gpu_device_id': 0}
         else:
             gpu_params = {'tree_method': 'gpu_hist', 'predictor': 'gpu_predictor'}
         logger.debug(f"GPU is enable with:{gpu_params}")

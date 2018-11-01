@@ -1,5 +1,5 @@
 from functools import partial
-from multiprocessing import Pool as ThreadPool
+from multiprocessing.pool import ThreadPool
 
 from code_felix.car.utils import *
 from code_felix.utils_.util_cache_file import *

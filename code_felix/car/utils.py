@@ -227,7 +227,7 @@ def get_zone_inf( test, threshold):
     #logger.debug(mini.columns)
 
     zoneid = reduce_address(threshold)
-    zoneid = zoneid[['out_id', 'zoneid', 'center_lat', 'center_lon']]#.drop_duplicates()
+    zoneid = zoneid[['out_id', 'zoneid', 'center_lat', 'center_lon']].drop_duplicates(['out_id', 'zoneid'])
     zoneid.columns = ['out_id', 'predict_zone_id', 'predict_lat', 'predict_lon']
 
     #zoneid = zoneid.sort_values(['out_id','predict_zone_id']).reset_index(drop=True)
@@ -235,17 +235,18 @@ def get_zone_inf( test, threshold):
 
     # print('===='*10, threshold)
     # print(zoneid.loc[(zoneid.out_id=='861181511140011') & (zoneid.predict_id==7) ])
-
+    test.index.name='r_key'
     #print(test.loc[(test.out_id=='861181511140011') & (test.predict_id==7) ][['out_id','predict_id']])
-    test = pd.merge(test, zoneid, how='left', on=['out_id','predict_zone_id'])
-
+    test = pd.merge(test.reset_index(), zoneid, how='left', on=['out_id','predict_zone_id'])
+    logger.debug(test.head(1))
+    test.set_index('r_key', inplace=True)
     #print(test.loc[(test.out_id == '861181511140011') & (test.predict_id == 7)][['out_id','predict_id','predict_zone_id']])
     #logger.debug(test[['out_id','predict_id', 'predict_zone_id', 'predict_lat', 'predict_lon']])
 
     # test.loc[test.out_id==out_id, ['predict_zone_id', 'predict_lat', 'predict_lon']] \
     #     = mini_train.loc[test.loc[test.out_id==out_id].predict_id].values
 
-    return test
+    return round(test, 6)
 
 
 def cal_loss_for_df(df):

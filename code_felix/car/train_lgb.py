@@ -30,11 +30,11 @@ def train_model(X, Y, **kw):
     param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
              'num_class': num_class,
              'objective': 'multiclass',
-            # **get_gpu_paras('lgb')
+              #**get_gpu_paras('lgb')
              }
     param['metric'] = ['multi_logloss']
 
-
+    #logger.debug(f'Final param for lgb is {param}')
     # 'num_leaves':num_leaves,
 
     train_data = lgb.Dataset(X, label=Y)
@@ -76,6 +76,7 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+    logger.debug(test.head(1))
     if adjust_test:
         test = adjust_new_zoneid_in_test(threshold, test, cur_train)
 
@@ -89,14 +90,16 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     #     #logger.debug(f"Begin to train the model for car:{out_id}" )
 
     process_out_id = partial(process_single_out_id,  test=test, train=train, **kw, )   # (out_id, test, train)
-    pool = ThreadPool(processes=8)
+
+    from multiprocessing.dummy import Pool as ThreadPool
+    pool = ThreadPool(processes=4)
     results = pool.map(process_out_id, test.out_id.drop_duplicates())
     pool.close();
     pool.join()
 
-
-
-    test = get_zone_inf( test, threshold)
+    logger.debug(test.head(1))
+    test = get_zone_inf(test, threshold)
+    logger.debug(test.head(1))
 
 
     #Reorder predict result
@@ -106,7 +109,7 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     loss = cal_loss_for_df(test)
     if loss:
         logger.debug(f"Loss is {loss}, LGB args:{args}")
-    else:
+    if sub or loss is None:
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
@@ -116,13 +119,13 @@ def gen_sub(sub, threshold, adjust_test, **kw):
 
     return test
 
-
+@timed(show_begin=False)
 def process_single_out_id( out_id, test, train, **kw,):
     classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
     if classes_num == 1:
         test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
         test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id == out_id].end_zoneid[0]
-        logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {result.shape} records')
+        logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {len(test.loc[test.out_id == out_id])} records')
     else:
         model = get_mode(out_id, train, **kw)
         result = predict(model, test.loc[test.out_id == out_id])
@@ -140,6 +143,8 @@ def process_single_out_id( out_id, test, train, **kw,):
 
         logger.debug(f'Done predict outid:{out_id}, {result.shape} records, {threshold}, {sub}')
 
+    return test[test.out_id==out_id]
+
 
 def get_zone_id(predict_id, train, out_id):
     mini = train.loc[train.out_id==out_id]
@@ -154,11 +159,13 @@ def get_zone_id(predict_id, train, out_id):
 
 if __name__ == '__main__':
     for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
-        for sub in [False, True ]:
+
             for adjust_test in [False, True]:
             #for estimator in range(50, 300, 50):
-                for num_round in [100, 200, 250]:
-                    gen_sub(sub, threshold, adjust_test, num_round = num_round, )
+                for num_round in [50, 250]:
+                    for sub in [True, False]:
+                        gen_sub(sub, threshold, adjust_test, num_round = num_round, )
+                        exit(0)
 
 
 
