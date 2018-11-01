@@ -34,7 +34,7 @@ def predict(model,  X):
 
 
 #@file_cache(overwrite=True)
-def gen_sub(sub, threshold, **kw):
+def gen_sub(sub, threshold, adjust_test, **kw):
     args = locals()
 
 
@@ -53,7 +53,7 @@ def gen_sub(sub, threshold, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-    adjust_test = False
+    #adjust_test = False
     if adjust_test:
         test = adjust_new_zoneid_in_test(threshold, test, cur_train)
 
@@ -116,10 +116,10 @@ def get_zone_id(predict_id, train, out_id):
 if __name__ == '__main__':
     for max_depth in [4]:
         for sub in [False, ]:
-            #for adjust_test in [False, True]:
-            for estimator in range(4, 10, 2):
-                for threshold in[500]: #1000,2000 ,300, 400, 500,
-                    gen_sub(sub, threshold,  max_depth = max_depth, n_estimators=estimator,)
+            for adjust_test in [False, True]:
+                for estimator in [ 10, 50, 100, 200]:
+                    for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
+                        gen_sub(sub, threshold, adjust_test, max_depth = max_depth, n_estimators=estimator,)
 
 
 

@@ -30,8 +30,9 @@ def train_model(X, Y, **kw):
     param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
              'num_class': num_class,
              'objective': 'multiclass',
-             **get_gpu_paras('lgb')}
-    param['metric'] = ['auc', 'multi_logloss']
+            # **get_gpu_paras('lgb')
+             }
+    param['metric'] = ['multi_logloss']
 
 
     # 'num_leaves':num_leaves,
@@ -56,7 +57,7 @@ def predict(model,  X):
 
 
 #@file_cache(overwrite=True)
-def gen_sub(sub, threshold, **kw):
+def gen_sub(sub, threshold, adjust_test, **kw):
     args = locals()
 
 
@@ -75,7 +76,6 @@ def gen_sub(sub, threshold, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-    adjust_test = False
     if adjust_test:
         test = adjust_new_zoneid_in_test(threshold, test, cur_train)
 
@@ -85,30 +85,16 @@ def gen_sub(sub, threshold, **kw):
     # predict_cols = ['predict_id','predict_zone_id', 'predict_lat', 'predict_lon']
     # test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
 
-    for out_id in test.out_id.drop_duplicates():
-        #logger.debug(f"Begin to train the model for car:{out_id}" )
+    # for out_id in test.out_id.drop_duplicates():
+    #     #logger.debug(f"Begin to train the model for car:{out_id}" )
 
-        classes_num = len(train[train.out_id==out_id].end_zoneid.drop_duplicates())
-        if classes_num==1:
-            test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
-            test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id==out_id].end_zoneid[0]
-            logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {result.shape} records')
-        else:
-            model = get_mode(out_id, train, **kw)
-            result = predict(model, test.loc[test.out_id == out_id])
-            #logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
-            #logger.debug(result.shape)
-            predict_id = np.argmax(result, axis=1)
-            test.loc[test.out_id == out_id, 'predict_id'] = predict_id
+    process_out_id = partial(process_single_out_id,  test=test, train=train, **kw, )   # (out_id, test, train)
+    pool = ThreadPool(processes=8)
+    results = pool.map(process_out_id, test.out_id.drop_duplicates())
+    pool.close();
+    pool.join()
 
-            #logger.debug(f'out_id:{out_id}, ')
-            # if out_id == '861181511140011':
-            #     :(result)
-            predict_zoneid = get_zone_id(predict_id, train, out_id)
 
-            test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
-
-            logger.debug(f'Finish the predict for outid:{out_id}, {result.shape} records')
 
     test = get_zone_inf( test, threshold)
 
@@ -130,6 +116,31 @@ def gen_sub(sub, threshold, **kw):
 
     return test
 
+
+def process_single_out_id( out_id, test, train, **kw,):
+    classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
+    if classes_num == 1:
+        test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
+        test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id == out_id].end_zoneid[0]
+        logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {result.shape} records')
+    else:
+        model = get_mode(out_id, train, **kw)
+        result = predict(model, test.loc[test.out_id == out_id])
+        # logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
+        # logger.debug(result.shape)
+        predict_id = np.argmax(result, axis=1)
+        test.loc[test.out_id == out_id, 'predict_id'] = predict_id
+
+        # logger.debug(f'out_id:{out_id}, ')
+        # if out_id == '861181511140011':
+        #     :(result)
+        predict_zoneid = get_zone_id(predict_id, train, out_id)
+
+        test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
+
+        logger.debug(f'Done predict outid:{out_id}, {result.shape} records, {threshold}, {sub}')
+
+
 def get_zone_id(predict_id, train, out_id):
     mini = train.loc[train.out_id==out_id]
     mini = mini.end_zoneid.sort_values().drop_duplicates()
@@ -142,12 +153,12 @@ def get_zone_id(predict_id, train, out_id):
 
 
 if __name__ == '__main__':
-    for num_round in range(10, 50, 10):
+    for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
         for sub in [False, True ]:
-            #for adjust_test in [False, True]:
+            for adjust_test in [False, True]:
             #for estimator in range(50, 300, 50):
-                for threshold in[ 400,500,600 ]: #1000,2000 ,300, 400, 500,
-                    gen_sub(sub, threshold,  num_round = num_round, )
+                for num_round in [100, 200, 250]:
+                    gen_sub(sub, threshold, adjust_test, num_round = num_round, )
 
 
 
