@@ -1,5 +1,5 @@
 from sklearn.ensemble import RandomForestClassifier
-
+import xgboost as xgb
 from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
@@ -16,7 +16,7 @@ def get_features(out_id, df):
     #logger.debug(f'Label:from {dup_label.min()} to {dup_label.max()}, length:{len(dup_label)} ')
     return df[feature_col] , df['end_zoneid']
 
-def train_model(X, Y, **kw):
+def train_model_lgb(X, Y, **kw):
     replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
     #logger.debug(replace_map)
     #logger.debug(type(Y))
@@ -46,18 +46,60 @@ def train_model(X, Y, **kw):
     #logger.debug(clf.feature_importances_)
     return bst
 
-def get_mode(out_id, df, **kw):
+
+def train_model_xgb(X, Y, **kw):
+    replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
+    #logger.debug(replace_map)
+    #logger.debug(type(Y))
+    Y.replace(dict(zip(replace_map.end_zoneid, replace_map.index)),  inplace=True)
+
+    num_class = len(Y.drop_duplicates())
+    #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
+
+
+
+
+    param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
+             'num_class': num_class,
+             'objective': 'multi:softprob',
+             'silent': True,
+              **get_gpu_paras('xgb')
+             }
+    param['eval_metric'] = ['mlogloss']
+
+    #logger.debug(f'Final param for lgb is {param}')
+    # 'num_leaves':num_leaves,
+
+    train_data = xgb.DMatrix(X, Y)
+    test_data = xgb.DMatrix(X, Y)
+
+    num_round = kw['num_round']
+    bst = xgb.train(param, train_data, num_round, evals=[(test_data, 'train')], verbose_eval=False)
+
+    #logger.debug(clf.feature_importances_)
+    return bst
+
+def get_mode(out_id, df, model_type='lgb', **kw):
     X, Y = get_features(out_id, df)
-    model = train_model(X, Y, **kw)
+    if model_type == 'lgb':
+        model = train_model_lgb(X, Y, **kw)
+    else:
+        model = train_model_xgb(X, Y, **kw)
+
     return model
 
+
 def predict(model,  X):
-    #X = df[df.out_id==out_id]
-    return model.predict(X[feature_col])
+    #logger.debug(type(model))
+    if isinstance(model, xgb.core.Booster):
+        return model.predict(xgb.DMatrix(X[feature_col]))
+    else: #Lgb
+        return model.predict(X[feature_col])
 
 
 #@file_cache(overwrite=True)
-def gen_sub(sub, threshold, adjust_test, **kw):
+@timed()
+def gen_sub(sub, threshold, adjust_test,model_type, **kw):
     args = locals()
 
 
@@ -76,7 +118,7 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-    logger.debug(test.head(1))
+    #logger.debug(test.head(1))
     if adjust_test:
         test = adjust_new_zoneid_in_test(threshold, test, cur_train)
 
@@ -88,18 +130,22 @@ def gen_sub(sub, threshold, adjust_test, **kw):
 
     # for out_id in test.out_id.drop_duplicates():
     #     #logger.debug(f"Begin to train the model for car:{out_id}" )
+    model_type = 'xgb'
 
-    process_out_id = partial(process_single_out_id,  test=test, train=train, **kw, )   # (out_id, test, train)
+    process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
 
     from multiprocessing.dummy import Pool as ThreadPool
-    pool = ThreadPool(processes=4)
+    if model_type == 'xgb':
+        thread_num=1
+    else:
+        thread_num=4
+    pool = ThreadPool(processes=thread_num)
     results = pool.map(process_out_id, test.out_id.drop_duplicates())
     pool.close();
     pool.join()
 
-    logger.debug(test.head(1))
     test = get_zone_inf(test, threshold)
-    logger.debug(test.head(1))
+    #logger.debug(test.head(1))
 
 
     #Reorder predict result
@@ -113,21 +159,21 @@ def gen_sub(sub, threshold, adjust_test, **kw):
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
-        sub_file = replace_invalid_filename_char(f'./output/result_lgb_{args}.csv')
+        sub_file = replace_invalid_filename_char(f'./output/result_{model_type}_{args}.csv')
         sub.to_csv(sub_file)
         logger.debug(f'Sub file is save to {sub_file}')
 
     return test
 
 @timed(show_begin=False)
-def process_single_out_id( out_id, test, train, **kw,):
+def process_single_out_id( out_id, test, train, model_type,**kw,):
     classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
     if classes_num == 1:
         test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
         test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id == out_id].end_zoneid[0]
         logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {len(test.loc[test.out_id == out_id])} records')
     else:
-        model = get_mode(out_id, train, **kw)
+        model = get_mode(out_id, train, model_type, **kw)
         result = predict(model, test.loc[test.out_id == out_id])
         # logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
         # logger.debug(result.shape)
@@ -141,7 +187,7 @@ def process_single_out_id( out_id, test, train, **kw,):
 
         test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
 
-        logger.debug(f'Done predict outid:{out_id}, {result.shape} records, {threshold}, {sub}')
+        #logger.debug(f'Done predict outid:{out_id}, {result.shape} records, {threshold}, {sub}')
 
     return test[test.out_id==out_id]
 
@@ -159,13 +205,13 @@ def get_zone_id(predict_id, train, out_id):
 
 if __name__ == '__main__':
     for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
-
             for adjust_test in [False, True]:
-            #for estimator in range(50, 300, 50):
-                for num_round in [50, 250]:
-                    for sub in [True, False]:
-                        gen_sub(sub, threshold, adjust_test, num_round = num_round, )
-                        exit(0)
+                for model_type in ['xgb', 'lgb']:
+                #for estimator in range(50, 300, 50):
+                    for num_round in [50, 100]:
+                        for sub in [True]:
+                            gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, )
+                            ##exit(0)
 
 
 
