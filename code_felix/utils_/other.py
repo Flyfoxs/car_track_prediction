@@ -74,7 +74,7 @@ def get_gpu_paras(kind='lgb'):
             gpu_params = {'device': 'gpu', 'gpu_platform_id': 0,'gpu_device_id': 0}
         else:
             gpu_params = {'tree_method': 'gpu_hist', 'predictor': 'gpu_predictor'}
-        logger.debug(f"GPU is enable with:{gpu_params}")
+        logger.debug(f"GPU is enable with{kind}, :{gpu_params}")
 
     else:
         logger.debug("GPU is disable")

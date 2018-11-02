@@ -120,6 +120,7 @@ if __name__ == '__main__':
                 for estimator in [ 10, 50, 100, 200]:
                     for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
                         gen_sub(sub, threshold, adjust_test, max_depth = max_depth, n_estimators=estimator,)
+                        exit(0)
 
 
 

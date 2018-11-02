@@ -1,5 +1,6 @@
 from sklearn.ensemble import RandomForestClassifier
 import xgboost as xgb
+import lightgbm as lgb
 from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
@@ -26,7 +27,7 @@ def train_model_lgb(X, Y, **kw):
     #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
 
 
-    import lightgbm as lgb
+
     param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
              'num_class': num_class,
              'objective': 'multiclass',
@@ -45,7 +46,12 @@ def train_model_lgb(X, Y, **kw):
 
     #logger.debug(clf.feature_importances_)
     return bst
+def train_model_rf(X, Y, **kw):
+    clf = RandomForestClassifier( n_estimators = kw['num_round'], random_state=0)
 
+    clf = clf.fit(X, Y)
+    #logger.debug(clf.feature_importances_)
+    return clf
 
 def train_model_xgb(X, Y, **kw):
     replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
@@ -84,6 +90,8 @@ def get_mode(out_id, df, model_type='lgb', **kw):
     X, Y = get_features(out_id, df)
     if model_type == 'lgb':
         model = train_model_lgb(X, Y, **kw)
+    elif model_type == 'rf':
+        model = train_model_rf(X, Y, **kw)
     else:
         model = train_model_xgb(X, Y, **kw)
 
@@ -91,11 +99,14 @@ def get_mode(out_id, df, model_type='lgb', **kw):
 
 
 def predict(model,  X):
-    #logger.debug(type(model))
+    logger.debug(type(model))
     if isinstance(model, xgb.core.Booster):
         return model.predict(xgb.DMatrix(X[feature_col]))
-    else: #Lgb
+    elif isinstance(model, lgb.basic.Booster):
+    #else: #Lgb
         return model.predict(X[feature_col])
+    elif isinstance(model, RandomForestClassifier):
+        return model.predict_proba(X[feature_col])
 
 
 #@file_cache(overwrite=True)
@@ -131,22 +142,23 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
 
     # for out_id in test.out_id.drop_duplicates():
     #     #logger.debug(f"Begin to train the model for car:{out_id}" )
-    model_type = 'xgb'
-    if model_type == 'xgb':
+    #model_type = 'xgb'
+    if model_type in ['xgb', 'lgb', 'rf']:
         out_list = test.out_id.drop_duplicates()
         count=0
         for out_id in out_list:
             count += 1
-            logger.debug(f'Progress:{count}/{len(out_list)}')
-            process_single_out_id(out_id, test, train, model_type, **kw, )
+            #logger.debug(f'Progress:{count}/{len(out_list)}')
+            result = process_single_out_id(out_id, test, train, model_type, **kw, )
+            logger.debug(f'{count}/{len(out_list)}, outid:{out_id}, {result.shape} records, {args}')
 
-    else:
-        process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
-        from multiprocessing.dummy import Pool as ThreadPool
-        pool = ThreadPool(processes=4)
-        results = pool.map(process_out_id, test.out_id.drop_duplicates())
-        pool.close();
-        pool.join()
+    # else:
+    #     process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
+    #     from multiprocessing.dummy import Pool as ThreadPool
+    #     pool = ThreadPool(processes=4)
+    #     results = pool.map(process_out_id, test.out_id.drop_duplicates())
+    #     pool.close();
+    #     pool.join()
 
     test = get_zone_inf(test, threshold)
     #logger.debug(test.head(1))
@@ -155,10 +167,10 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
     #Reorder predict result
     #test = test.drop(test.columns, axis=1).join(test)
 
-
+    #logger.debug(test.head(1))
     loss = cal_loss_for_df(test)
     if loss:
-        logger.debug(f"Loss is {loss}, on {len(test)} sample, LGB args:{args}")
+        logger.debug(f"Loss is {'{:,.5f}'.format(loss)}, on {len(test)} sample, args:{args}")
     if sub or loss is None:
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
@@ -169,7 +181,7 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
 
     return test
 
-@timed(show_begin=False)
+#@timed(show_begin=False)
 def process_single_out_id( out_id, test, train, model_type,**kw,):
     classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
     if classes_num == 1:
@@ -208,15 +220,26 @@ def get_zone_id(predict_id, train, out_id):
 
 
 if __name__ == '__main__':
-    for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
+    # for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
+    #         for adjust_test in [False, True]:
+    #             for max_depth in [8, 6, 4]:
+    #                 for model_type in ['rf']:
+    #                 #for estimator in range(50, 300, 50):
+    #                     for num_round in range(8, 20, 2):
+    #                         for sub in [False]:
+    #                             gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, max_depth=max_depth )
+    #                             exit(0)
+
+    for max_depth in [4]:
+        for sub in [False, ]:
             for adjust_test in [False, True]:
-                for max_depth in [3,4,5]:
-                    for model_type in ['xgb']:
-                    #for estimator in range(50, 300, 50):
-                        for num_round in range(1, 10, 1):
-                            for sub in [False]:
-                                gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, max_depth=max_depth )
-                                ##exit(0)
+                for estimator in [ 10, 50, 100, 200]:
+                    for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
+                        for model_type in ['rf']:
+                            gen_sub(sub, threshold, adjust_test,model_type, max_depth = max_depth, num_round=estimator,)
+                            exit(0)
+                            #exit(0)
+
 
 
 

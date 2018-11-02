@@ -238,7 +238,7 @@ def get_zone_inf( test, threshold):
     test.index.name='r_key'
     #print(test.loc[(test.out_id=='861181511140011') & (test.predict_id==7) ][['out_id','predict_id']])
     test = pd.merge(test.reset_index(), zoneid, how='left', on=['out_id','predict_zone_id'])
-    logger.debug(test.head(1))
+    #logger.debug(test.head(1))
     test.set_index('r_key', inplace=True)
     #print(test.loc[(test.out_id == '861181511140011') & (test.predict_id == 7)][['out_id','predict_id','predict_zone_id']])
     #logger.debug(test[['out_id','predict_id', 'predict_zone_id', 'predict_lat', 'predict_lon']])
@@ -259,6 +259,7 @@ def cal_loss_for_df(df):
         if out_id_len==1:
             logger.debug(f'loss is {final_loss}, for car:{df.out_id[0]} with {len(df)} records')
         else:
+            logger.debug(df.head(1))
             logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
