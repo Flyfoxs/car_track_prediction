@@ -57,9 +57,10 @@ def train_model_xgb(X, Y, **kw):
     #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
 
 
+    num_round = kw['num_round']
+    max_depth = kw['max_depth']
 
-
-    param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
+    param = {'verbose': -1,'max_depth': max_depth,
              'num_class': num_class,
              'objective': 'multi:softprob',
              'silent': True,
@@ -73,7 +74,7 @@ def train_model_xgb(X, Y, **kw):
     train_data = xgb.DMatrix(X, Y)
     test_data = xgb.DMatrix(X, Y)
 
-    num_round = kw['num_round']
+
     bst = xgb.train(param, train_data, num_round, evals=[(test_data, 'train')], verbose_eval=False)
 
     #logger.debug(clf.feature_importances_)
@@ -131,18 +132,21 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
     # for out_id in test.out_id.drop_duplicates():
     #     #logger.debug(f"Begin to train the model for car:{out_id}" )
     model_type = 'xgb'
-
-    process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
-
-    from multiprocessing.dummy import Pool as ThreadPool
     if model_type == 'xgb':
-        thread_num=1
+        out_list = test.out_id.drop_duplicates()
+        count=0
+        for out_id in out_list:
+            count += 1
+            logger.debug(f'Progress:{count}/{len(out_list)}')
+            process_single_out_id(out_id, test, train, model_type, **kw, )
+
     else:
-        thread_num=4
-    pool = ThreadPool(processes=thread_num)
-    results = pool.map(process_out_id, test.out_id.drop_duplicates())
-    pool.close();
-    pool.join()
+        process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
+        from multiprocessing.dummy import Pool as ThreadPool
+        pool = ThreadPool(processes=4)
+        results = pool.map(process_out_id, test.out_id.drop_duplicates())
+        pool.close();
+        pool.join()
 
     test = get_zone_inf(test, threshold)
     #logger.debug(test.head(1))
@@ -154,7 +158,7 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
 
     loss = cal_loss_for_df(test)
     if loss:
-        logger.debug(f"Loss is {loss}, LGB args:{args}")
+        logger.debug(f"Loss is {loss}, on {len(test)} sample, LGB args:{args}")
     if sub or loss is None:
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
@@ -169,8 +173,8 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
 def process_single_out_id( out_id, test, train, model_type,**kw,):
     classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
     if classes_num == 1:
-        test.loc[test.out_id == out_id, 'predict_zone_id'] = 0
-        test.loc[test.out_id == out_id, 'predict_id'] = train[train.out_id == out_id].end_zoneid[0]
+        test.loc[test.out_id == out_id, 'predict_id'] = 0
+        test.loc[test.out_id == out_id, 'predict_zone_id'] = train[train.out_id == out_id].end_zoneid[0]
         logger.debug(f'Finish the predict(simple way) for outid:{out_id}, {len(test.loc[test.out_id == out_id])} records')
     else:
         model = get_mode(out_id, train, model_type, **kw)
@@ -206,12 +210,13 @@ def get_zone_id(predict_id, train, out_id):
 if __name__ == '__main__':
     for threshold in [400, 500, 600]:  # 1000,2000 ,300, 400, 500,
             for adjust_test in [False, True]:
-                for model_type in ['xgb', 'lgb']:
-                #for estimator in range(50, 300, 50):
-                    for num_round in [50, 100]:
-                        for sub in [True]:
-                            gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, )
-                            ##exit(0)
+                for max_depth in [3,4,5]:
+                    for model_type in ['xgb']:
+                    #for estimator in range(50, 300, 50):
+                        for num_round in range(1, 10, 1):
+                            for sub in [False]:
+                                gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, max_depth=max_depth )
+                                ##exit(0)
 
 
 
