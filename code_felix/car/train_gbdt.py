@@ -15,21 +15,21 @@ def get_features(out_id, df):
     df = df[df.out_id == out_id]
     #dup_label =  df['end_zoneid'].drop_duplicates()
     #logger.debug(f'Label:from {dup_label.min()} to {dup_label.max()}, length:{len(dup_label)} ')
-    return df[feature_col] , df['end_zoneid']
+    return df[feature_col] , df['end_zoneid'].astype('category')
 
 def train_model_lgb(X, Y, **kw):
-    replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
-    #logger.debug(replace_map)
-    #logger.debug(type(Y))
-    Y.replace(dict(zip(replace_map.end_zoneid, replace_map.index)),  inplace=True)
-
-    num_class = len(Y.drop_duplicates())
-    #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
+    # replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
+    # #logger.debug(replace_map)
+    # #logger.debug(type(Y))
+    # Y.replace(dict(zip(replace_map.end_zoneid, replace_map.index)),  inplace=True)
+    #
+    # num_class = len(Y.drop_duplicates())
+    # #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
 
 
 
     param = {'num_leaves': 31, 'verbose': -1,'max_depth': 3,
-             'num_class': num_class,
+             'num_class': len(Y.cat.categories),
              'objective': 'multiclass',
               #**get_gpu_paras('lgb')
              }
@@ -38,8 +38,8 @@ def train_model_lgb(X, Y, **kw):
     #logger.debug(f'Final param for lgb is {param}')
     # 'num_leaves':num_leaves,
 
-    train_data = lgb.Dataset(X, label=Y)
-    test_data = lgb.Dataset(X, label=Y, reference=train_data)
+    train_data = lgb.Dataset(X, label=Y.cat.codes)
+    test_data = lgb.Dataset(X, label=Y.cat.codes, reference=train_data)
 
     num_round = kw['num_round']
     bst = lgb.train(param, train_data, num_round, valid_sets=[test_data], verbose_eval=False)
@@ -47,27 +47,20 @@ def train_model_lgb(X, Y, **kw):
     #logger.debug(clf.feature_importances_)
     return bst
 def train_model_rf(X, Y, **kw):
-    clf = RandomForestClassifier( n_estimators = kw['num_round'], random_state=0)
-
-    clf = clf.fit(X, Y)
+    clf = RandomForestClassifier(max_depth=4, n_estimators = kw['num_round'], random_state=0)
+    #Y = Y.astype('category')
+    clf = clf.fit(X, Y.cat.codes)
     #logger.debug(clf.feature_importances_)
     return clf
 
 def train_model_xgb(X, Y, **kw):
-    replace_map = Y.drop_duplicates().sort_values().reset_index(drop=True).to_frame()
-    #logger.debug(replace_map)
-    #logger.debug(type(Y))
-    Y.replace(dict(zip(replace_map.end_zoneid, replace_map.index)),  inplace=True)
-
-    num_class = len(Y.drop_duplicates())
-    #logger.debug(f'num_class:{num_class}, len_sample:{len(X)}')
 
 
     num_round = kw['num_round']
     max_depth = kw['max_depth']
-
+    #logger.debug(f'{len(Y.cat.categories)}, {Y.cat.categories}')
     param = {'verbose': -1,'max_depth': max_depth,
-             'num_class': num_class,
+             'num_class': len(Y.cat.categories),
              'objective': 'multi:softprob',
              'silent': True,
               **get_gpu_paras('xgb')
@@ -77,8 +70,8 @@ def train_model_xgb(X, Y, **kw):
     #logger.debug(f'Final param for lgb is {param}')
     # 'num_leaves':num_leaves,
 
-    train_data = xgb.DMatrix(X, Y)
-    test_data = xgb.DMatrix(X, Y)
+    train_data = xgb.DMatrix(X, Y.cat.codes)
+    test_data = xgb.DMatrix(X, Y.cat.codes)
 
 
     bst = xgb.train(param, train_data, num_round, evals=[(test_data, 'train')], verbose_eval=False)
@@ -92,18 +85,21 @@ def get_mode(out_id, df, model_type='lgb', **kw):
         model = train_model_lgb(X, Y, **kw)
     elif model_type == 'rf':
         model = train_model_rf(X, Y, **kw)
-    else:
+    elif model_type == 'xgb':
         model = train_model_xgb(X, Y, **kw)
+    else:
+        logger.error(f'Can not find model for {model_type}')
+        exit(-1)
 
     return model
 
 
 def predict(model,  X):
-    logger.debug(type(model))
+
     if isinstance(model, xgb.core.Booster):
         return model.predict(xgb.DMatrix(X[feature_col]))
     elif isinstance(model, lgb.basic.Booster):
-    #else: #Lgb
+        #logger.debug(f'Xgboost:{type(model)}')
         return model.predict(X[feature_col])
     elif isinstance(model, RandomForestClassifier):
         return model.predict_proba(X[feature_col])
@@ -150,7 +146,7 @@ def gen_sub(sub, threshold, adjust_test,model_type, **kw):
             count += 1
             #logger.debug(f'Progress:{count}/{len(out_list)}')
             result = process_single_out_id(out_id, test, train, model_type, **kw, )
-            logger.debug(f'{count}/{len(out_list)}, outid:{out_id}, {result.shape} records, {args}')
+            logger.debug(f'{count}/{len(out_list)}, outid:{out_id}, {len(result)} records, {args}')
 
     # else:
     #     process_out_id = partial(process_single_out_id,  test=test, train=train, model_type=model_type, **kw, )   # (out_id, test, train)
@@ -209,12 +205,10 @@ def process_single_out_id( out_id, test, train, model_type,**kw,):
 
 
 def get_zone_id(predict_id, train, out_id):
-    mini = train.loc[train.out_id==out_id]
-    mini = mini.end_zoneid.sort_values().drop_duplicates()
-    mini = mini.reset_index(drop=True)
-    zone_id = mini.loc[predict_id].values
+    Y = pd.Categorical(train.loc[train.out_id==out_id].end_zoneid).categories
+    #zone_id = mini.loc.values
     #logger.debug(f'Convert {predict_id} to {zone_id}')
-    return zone_id
+    return Y[predict_id]
 
 
 
@@ -229,6 +223,8 @@ if __name__ == '__main__':
     #                         for sub in [False]:
     #                             gen_sub(sub, threshold, adjust_test,model_type, num_round = num_round, max_depth=max_depth )
     #                             exit(0)
+
+
 
     for max_depth in [4]:
         for sub in [False, ]:

@@ -17,6 +17,7 @@ def get_features(out_id, df):
     return df[feature_col] , df['end_zoneid']
 
 def train_model(X, Y, **kw):
+    logger.debug(f'RandomForestClassifier:{kw}')
     clf = RandomForestClassifier( **kw, random_state=0)
 
     clf = clf.fit(X, Y)
@@ -71,6 +72,7 @@ def gen_sub(sub, threshold, adjust_test, **kw):
         #logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
         #logger.debug(result.shape)
         predict_id = np.argmax(result, axis=1)
+
         test.loc[test.out_id == out_id, 'predict_id'] = predict_id
 
         #logger.debug(f'out_id:{out_id}, ')
@@ -103,12 +105,9 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     return test
 
 def get_zone_id(predict_id, train, out_id):
-    mini = train.loc[train.out_id==out_id]
-    mini = mini.end_zoneid.sort_values().drop_duplicates()
-    mini = mini.reset_index(drop=True)
-    zone_id = mini.loc[predict_id].values
+    cat = pd.Categorical(train.loc[train.out_id == out_id].end_zoneid).categories
     #logger.debug(f'Convert {predict_id} to {zone_id}')
-    return zone_id
+    return cat[predict_id]
 
 
 
