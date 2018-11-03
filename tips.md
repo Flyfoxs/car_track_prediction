@@ -29,6 +29,12 @@
 * module emsemble
 * diff car with diff distance threshold
 * find the close add for test data
+* focus on address attribute(hot place, shope, school, and so on)
+* 
+
+*zoneid, in, out, 
+
+*out_id, count(zoneid)
 
 # Classfy
 * Top 10 multiple class:DC Tree

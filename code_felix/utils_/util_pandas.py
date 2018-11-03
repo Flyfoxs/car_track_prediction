@@ -66,6 +66,6 @@ def check_exception(df, index=None):
 
 
 def flat_columns(df):
-    df.columns = ['_'.join(item) for item in df.columns]
+    df.columns = ['_'.join(np.array(item, str)) for item in df.columns]
     df = df.reset_index()
     return df

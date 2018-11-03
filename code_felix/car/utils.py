@@ -3,11 +3,9 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from code_felix.car.distance_reduce import reduce_address, getDistance
+from code_felix.car.distance_reduce import getDistance
 from code_felix.car.holiday import get_holiday
-from code_felix.utils_.util_log import *
 
-from code_felix.utils_.util_cache_file import *
 
 from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_pandas import *
@@ -147,6 +145,36 @@ def get_train_with_adjust_position(threshold, train_file):
     all.drop(['index'], axis=1, inplace=True)
     return all
 
+@timed()
+def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
+    center_add = get_centers_add(train_file, threshold, topn)
+    add_with_zoneid = pd.merge(add_with_zoneid, center_add, on='out_id', how='left')
+    for i in range(0,topn):
+        logger.debug("Try to cal distance to center#%s" % i)
+        add_with_zoneid['dis_center_%s'%i] = \
+            add_with_zoneid.apply(lambda row: getDistance(row.start_lat_adj, row.start_lon_adj,
+                                                          row[f'center_lat_{i}'], row[f'center_lon_{i}']), axis=1)
+
+        add_with_zoneid['dis_center_%s' % i] = round(add_with_zoneid['dis_center_%s'%i])
+    add_with_zoneid.drop([f'center_lat_{i}' for i in range(0, topn)], axis=1)
+    add_with_zoneid.drop([f'center_lon_{i}' for i in range(0, topn)], axis=1)
+    return add_with_zoneid
+
+
+@timed()
+def get_centers_add(train_file, threshold, topn):
+    from code_felix.car.distance_reduce import count_in_out_4_zone_id, reduce_address
+    zoneid = reduce_address(threshold)
+    in_out = count_in_out_4_zone_id(zoneid, train_file)
+    in_out = in_out[(in_out.sn <= topn)]
+
+    # gp[['zoneid_n','lat_n', 'lon_n']] = gp.groupby('out_id')['zoneid','center_lat','center_lon'].shift(-1)
+    # gp = gp[gp.sn==0]
+
+    # gp['dis_home_company'] = gp.apply(lambda row: getDistance(row.center_lat, row.center_lon, row.lat_n, row.lon_n), axis=1)
+    gp = in_out.pivot_table(['center_lat', 'center_lon'], index=['out_id'], columns='sn')
+    gp = flat_columns(gp)
+    return gp
 
 @file_cache(overwrite=False)
 def get_test_with_adjust_position(threshold, train_file, test_file):
@@ -180,6 +208,7 @@ def adjust_new_zoneid_in_test(threshold, test_df, train_file):
     test_df['new_zoneid'] = None
 
     # The address in train
+    from code_felix.car.distance_reduce import reduce_address
     all_address = reduce_address(threshold)
     all_address = pd.merge(all_address, test_need_adjust, left_on=['out_id', 'zoneid'],
                            right_on=['out_id', 'start_zoneid'], how='left')
@@ -190,6 +219,7 @@ def adjust_new_zoneid_in_test(threshold, test_df, train_file):
         min_gap = 99999999;
         min_zone_id = None
         for _, train in train_address.loc[train_address.out_id == out_id].iterrows():
+            from code_felix.car.distance_reduce import getDistance
             distance_gap = getDistance(test.start_lat, test.start_lon, train.center_lat, train.center_lon)
             if distance_gap <= min_gap:
                 min_gap = distance_gap
@@ -226,6 +256,7 @@ def loss_fun(gap):
 def get_zone_inf( test, threshold):
     #logger.debug(mini.columns)
 
+    from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold)
     zoneid = zoneid[['out_id', 'zoneid', 'center_lat', 'center_lon']].drop_duplicates(['out_id', 'zoneid'])
     zoneid.columns = ['out_id', 'predict_zone_id', 'predict_lat', 'predict_lon']

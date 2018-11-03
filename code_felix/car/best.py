@@ -36,12 +36,14 @@ if __name__ == '__main__':
     #
     #
     #
-    # for max_depth in [4]:
-    #     for sub in [False, ]:
-    #         for adjust_test in [False, True]:
-    #             for estimator in [ 10, 50, 100, 200]:
-    #                 for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
-    #                     for model_type in ['rf']:
-    #                         gen_sub(sub, threshold, adjust_test,model_type, max_depth = max_depth, num_round=estimator,)
-    #                         exit(0)
+
+    gen_sub(False, 500, adjust_test, model_type, max_depth=max_depth, num_round=estimator, )
+    for max_depth in [4]:
+        for sub in [False, ]:
+            for adjust_test in [False, True]:
+                for estimator in [ 10, 50, 100, 200]:
+                    for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
+                        for model_type in ['rf']:
+                            gen_sub(sub, threshold, adjust_test,model_type, max_depth = max_depth, num_round=estimator,)
+                            exit(0)
     #

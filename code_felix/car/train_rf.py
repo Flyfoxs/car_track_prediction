@@ -17,7 +17,7 @@ def get_features(out_id, df):
     return df[feature_col] , df['end_zoneid']
 
 def train_model(X, Y, **kw):
-    logger.debug(f'RandomForestClassifier:{kw}')
+    #logger.debug(f'RandomForestClassifier:{kw}')
     clf = RandomForestClassifier( **kw, random_state=0)
 
     clf = clf.fit(X, Y)
@@ -34,10 +34,10 @@ def predict(model,  X):
     return model.predict_proba(X[feature_col])
 
 
-#@file_cache(overwrite=True)
-def gen_sub(sub, threshold, adjust_test, **kw):
+@file_cache(overwrite=True)
+@timed()
+def gen_sub(sub, threshold, topn, **kw):
     args = locals()
-
 
     if sub:
         # Real get sub file
@@ -50,13 +50,17 @@ def gen_sub(sub, threshold, adjust_test, **kw):
 
 
     train = get_train_with_adjust_position(threshold, cur_train)
+
     # if clean:
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+    if topn > 0:
+        train = cal_distance_2_centers(train, cur_train, threshold, topn)
+        test = cal_distance_2_centers(test, cur_train, threshold, topn)
     #adjust_test = False
-    if adjust_test:
-        test = adjust_new_zoneid_in_test(threshold, test, cur_train)
+    # if adjust_test:
+    #     test = adjust_new_zoneid_in_test(threshold, test, cur_train)
 
     #Prepare null column to save predict result
     test['predict_id'] = None
@@ -64,9 +68,11 @@ def gen_sub(sub, threshold, adjust_test, **kw):
     # predict_cols = ['predict_id','predict_zone_id', 'predict_lat', 'predict_lon']
     # test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
 
+    car_num = len(test.out_id.drop_duplicates())
+    count = 0
     for out_id in test.out_id.drop_duplicates():
-        #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
-
+        count += 1
+        classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
         model = get_mode(out_id, train, **kw)
         result = predict(model, test.loc[test.out_id == out_id])
         #logger.debug(f'out_id:{out_id}, {result.shape}, raw_result:{result}')
@@ -75,14 +81,13 @@ def gen_sub(sub, threshold, adjust_test, **kw):
 
         test.loc[test.out_id == out_id, 'predict_id'] = predict_id
 
-        #logger.debug(f'out_id:{out_id}, ')
-        # if out_id == '861181511140011':
-        #     :(result)
+
         predict_zoneid = get_zone_id(predict_id, train, out_id)
 
         test.loc[test.out_id == out_id, 'predict_zone_id'] = predict_zoneid
 
-        logger.debug(f'Finish the predict for outid:{out_id}, {result.shape} records')
+        logger.debug(f'{count}/{car_num} predict for outid:{out_id}, {result.shape} records, sub:{sub}')
+
 
     test = get_zone_inf( test, threshold)
 
@@ -93,14 +98,15 @@ def gen_sub(sub, threshold, adjust_test, **kw):
 
     loss = cal_loss_for_df(test)
     if loss:
-        logger.debug(f"Loss is {loss}, args:{args}")
-    else:
+        logger.debug(f"Loss is {'{:,.5f}'.format(loss)}, args:{args}")
+    if sub or loss is None:
         sub = test[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
         sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
         sub.to_csv(sub_file)
         logger.debug(f'Sub file is save to {sub_file}')
+
 
     return test
 
@@ -109,17 +115,17 @@ def get_zone_id(predict_id, train, out_id):
     #logger.debug(f'Convert {predict_id} to {zone_id}')
     return cat[predict_id]
 
-
-
-
 if __name__ == '__main__':
-    for max_depth in [4]:
-        for sub in [False, ]:
-            for adjust_test in [False, True]:
-                for estimator in [ 10, 50, 100, 200]:
-                    for threshold in[400,500,600]: #1000,2000 ,300, 400, 500,
-                        gen_sub(sub, threshold, adjust_test, max_depth = max_depth, n_estimators=estimator,)
-                        exit(0)
+    #gen_sub(False, 500, max_depth=4, n_estimators=20, )
+
+    for sub in [False, True]:
+        for max_depth in [4]:
+            #for adjust_test in [0, 1000, 2000, 3000, 4000, 10000]:
+                for estimator in [20]:
+                    #for add_feature in ['weekday', 'holiday', None]:
+                        for threshold in[500]: #1000,2000 ,300, 400, 500,
+                            for topn in [3, 1, 5, 0, 10 ]:
+                                gen_sub(sub, threshold, topn, max_depth = max_depth, n_estimators=estimator,)
 
 
 
