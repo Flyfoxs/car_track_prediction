@@ -120,7 +120,48 @@ def reduce_address(threshold):
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
+    ## 'lat_2', 'lon_2',  'distance_gap' , 'lat_f', 'lon_f', 'zoneid_new', 'zoneid_raw'
+    dis_with_zoneid = dis_with_zoneid[['out_id', 'lat', 'lon',
+            'zoneid', 'center_lat', 'center_lon',
+            'distance_2_center', ]]
+
     return dis_with_zoneid
+
+def stand_zonid_by_end():
+    #TODO
+    pass
+
+def count_in_out_4_zone_id(dis_with_zone_id, train_file):
+    from code_felix.car.utils import get_train_with_distance
+    train = get_train_with_distance(train_file)
+    come_out = pd.merge(train, dis_with_zone_id, left_on=['out_id', 'start_lat', 'start_lon'],
+                        right_on=['out_id', 'lat', 'lon'], how='left')
+
+    come_out['out'] = 1
+
+    come_in = pd.merge(train, dis_with_zone_id, left_on=['out_id', 'end_lat', 'end_lon'],
+                       right_on=['out_id', 'lat', 'lon'], how='left')
+    come_in['in'] = 1
+
+    all = pd.concat([come_out, come_in])
+    gp = all.groupby(['out_id', 'zoneid', 'center_lat', 'center_lon',]).agg({'out': 'sum', 'in': 'sum'})
+
+    gp['in_out'] = gp.sum(axis=1)
+
+    gp[['in_total', 'out_total', 'in_out_total']] = gp.groupby('out_id')['in','out','in_out'].transform('sum')
+
+    gp['in_per'] =  gp['in']/gp.in_total
+    gp['out_per'] = gp['out']/gp.out_total
+    gp['in_out_per'] = gp['in_out']/gp.in_out_total
+    #gp.reset_index().sort_values(['out_id', 'in_out'], ascending=False)
+
+    gp = gp.reset_index().sort_values(['out_id', 'in_out'], ascending=False)
+    gp['sn'] = gp.groupby(['out_id'])['zoneid'].cumcount()
+    gp['previous'] = gp.groupby('out_id')['in_out'].shift(1)
+    gp['drop_percent'] = gp.in_out / gp.previous
+    gp.drop_percent.fillna(1, inplace=True)
+    return gp
+
 
 #Far from the home&company, and only 1 or 2 times
 def pickup_stable_zoneid(adress_with_zoneid):

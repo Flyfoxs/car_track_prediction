@@ -146,6 +146,36 @@ def get_train_with_adjust_position(threshold, train_file):
     all.drop(['index'], axis=1, inplace=True)
     return all
 
+@timed()
+def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
+    center_add = get_centers_add(train_file, threshold, topn)
+    add_with_zoneid = pd.merge(add_with_zoneid, center_add, on='out_id', how='left')
+    for i in range(0,topn):
+        logger.debug("Try to cal distance to center#%s" % i)
+        add_with_zoneid['dis_center_%s'%i] = \
+            add_with_zoneid.apply(lambda row: getDistance(row.start_lat_adj, row.start_lon_adj,
+                                                          row[f'center_lat_{i}'], row[f'center_lon_{i}']), axis=1)
+
+        add_with_zoneid['dis_center_%s' % i] = round(add_with_zoneid['dis_center_%s'%i])
+    add_with_zoneid.drop([f'center_lat_{i}' for i in range(0, topn)], axis=1)
+    add_with_zoneid.drop([f'center_lon_{i}' for i in range(0, topn)], axis=1)
+    return add_with_zoneid
+
+
+@timed()
+def get_centers_add(train_file, threshold, topn):
+    from code_felix.car.distance_reduce import count_in_out_4_zone_id, reduce_address
+    zoneid = reduce_address(threshold)
+    in_out = count_in_out_4_zone_id(zoneid, train_file)
+    in_out = in_out[(in_out.sn <= topn)]
+
+    # gp[['zoneid_n','lat_n', 'lon_n']] = gp.groupby('out_id')['zoneid','center_lat','center_lon'].shift(-1)
+    # gp = gp[gp.sn==0]
+
+    # gp['dis_home_company'] = gp.apply(lambda row: getDistance(row.center_lat, row.center_lon, row.lat_n, row.lon_n), axis=1)
+    gp = in_out.pivot_table(['center_lat', 'center_lon'], index=['out_id'], columns='sn')
+    gp = flat_columns(gp)
+    return gp
 
 @file_cache(overwrite=False)
 def get_test_with_adjust_position(threshold, train_file, test_file):
@@ -182,13 +212,15 @@ def loss_fun(gap):
 
 
 def get_zone_inf(out_id, train, test):
+
     mini_train = train[train.out_id==out_id]
+
     #logger.debug(mini.columns)
     mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj']].drop_duplicates()
     mini_train = mini_train.sort_values('end_zoneid').reset_index(drop=True)
 
     predict_cols = ['predict_zone_id', 'predict_lat','predict_lon']
-    test = pd.concat([test, pd.DataFrame(columns=predict_cols)])
+    test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
     test[predict_cols] = mini_train.loc[test.predict_id].values
 
     return test
@@ -201,10 +233,10 @@ def cal_loss_for_df(df):
         df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
         final_loss = round(df.final_loss.mean(), 5)
         out_id_len = len(df.out_id.drop_duplicates())
-        if out_id_len==1:
-            logger.debug(f'loss is {final_loss}, for car:{df.out_id[0]} with {len(df)} records')
-        else:
-            logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
+        # if out_id_len==1:
+        #     # logger.debug(f'loss is {final_loss}, for car:{df.out_id[0]} with {len(df)} records')
+        # else:
+            # logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
         logger.debug(f'Sub model, for car:{df.out_id[0]} with {len(df)} records')

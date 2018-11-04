@@ -12,9 +12,8 @@ feature_col = ['weekday', 'weekend', #'weekday',
 
 def get_features(out_id, df):
     df = df[df.out_id == out_id]
-    dup_label =  df['end_zoneid'].drop_duplicates()
     #logger.debug(f'Label:from {dup_label.min()} to {dup_label.max()}, length:{len(dup_label)} ')
-    return df[feature_col] , df['end_zoneid']
+    return df[feature_col] , df['end_zoneid'].astype('category')
 
 def train_model(X, Y, **kw):
     clf = RandomForestClassifier(n_estimators=100, **kw, random_state=0)
@@ -53,9 +52,16 @@ def gen_sub(sub, threshold, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+    test['predict_id'] = None
+    test['predict_zone_id'] = None
 
     predict_list = []
+    car_num = len(test.out_id.drop_duplicates())
+    count = 0
     for out_id in test.out_id.drop_duplicates():
+        count += 1
+        classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
+
         test_mini = test.loc[test.out_id == out_id]
         #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
@@ -65,13 +71,13 @@ def gen_sub(sub, threshold, **kw):
         result = np.argmax(result, axis=1)
         #logger.debug(result)
 
-        test_mini['predict_id'] = result
+        test.loc[test.out_id == out_id, 'predict_id']  = result
 
-        predict_result = get_zone_inf(out_id, train, test_mini)
+        predict_result = get_zone_inf(out_id, train, test)
+        sing_loss = cal_loss_for_df(predict_result)
+        logger.debug(f'{count}/{car_num} loss:{sing_loss} for outid:{out_id}, {result.shape} records, sub:{sub}')
 
         predict_list.append(predict_result)
-
-        cal_loss_for_df(predict_result)
 
     predict_list = pd.concat(predict_list)
 
@@ -80,7 +86,7 @@ def gen_sub(sub, threshold, **kw):
 
     loss = cal_loss_for_df(predict_list)
     if loss:
-        logger.debug(f"Loss is {loss} on {len(predict_list)} samples, args:{args}")
+        logger.debug(f"Loss is {loss} on {car_num} cars, {len(predict_list)} samples, args:{args}")
     else:
         sub = predict_list[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
@@ -94,11 +100,16 @@ def gen_sub(sub, threshold, **kw):
 
 
 if __name__ == '__main__':
-    for max_depth in [4, 5]:
-        for threshold in [220, 300, 400, 500]:
-            for sub in [True,False,]:
-               # for clean in [True, False]:
-                    gen_sub(sub, threshold, max_depth = max_depth)
+    #0.42434
+    gen_sub(False, 220, max_depth=4)
+
+    #
+    # for max_depth in [4, 5]:
+    #     for threshold in [220, 300, 400, 500]:
+    #         for sub in [True,False,]:
+    #            # for clean in [True, False]:
+    #                 gen_sub(sub, threshold, max_depth = max_depth)
+    #                 exit(1)
 
 
 
