@@ -113,7 +113,12 @@ def gen_sub(sub, threshold, top_n, **kw):
 
 if __name__ == '__main__':
     #0.42434
-    gen_sub(100, 220, 0, max_depth=4)
+    #gen_sub(200, 220, 0, max_depth=4)
+
+    for threshold in [220, 300, 400, 500, 600]:
+        gen_sub('all', threshold, 0, max_depth=4)
+
+
     # for topn in [4,5,7,0,]:
     #     for sub in [100]:
     #         gen_sub(sub, 220, topn, max_depth=4)

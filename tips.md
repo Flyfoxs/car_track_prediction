@@ -39,3 +39,6 @@
 
 home/code/result.csv
 
+
+#TODO
+pivot_table vs pivot

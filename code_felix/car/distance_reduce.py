@@ -122,12 +122,27 @@ def reduce_address(threshold, train_file):
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
+    dis_with_zoneid = reorder_zoneid_frequency(dis_with_zoneid, train_file)
     ## 'lat_2', 'lon_2',  'distance_gap' , 'lat_f', 'lon_f', 'zoneid_new', 'zoneid_raw'
     dis_with_zoneid = dis_with_zoneid[['out_id', 'lat', 'lon',
             'zoneid', 'center_lat', 'center_lon',
-            'distance_2_center', ]]
+            'distance_2_center',
+               'out', 'in' ,'in_out',
+             'in_total', 'out_total', 'in_out_total'	,
+             'in_per',	'out_per',	'in_out_per' ,]]
 
     return dis_with_zoneid
+
+def reorder_zoneid_frequency(dis_with_zone_id, train_file):
+    freq = count_in_out_4_zone_id(dis_with_zone_id, train_file)
+    # freq = freq[['out_id', 'zoneid', 'sn']].drop_duplicates()
+
+    dis_with_zone_id = pd.merge(dis_with_zone_id,freq, how='left')
+    dis_with_zone_id.zoneid, dis_with_zone_id.sn =  dis_with_zone_id.sn, dis_with_zone_id.zoneid
+
+    dis_with_zone_id.zoneid.fillna('999',inplace=True)
+    return dis_with_zone_id
+
 
 def stand_zonid_by_end():
     #TODO
@@ -163,6 +178,7 @@ def count_in_out_4_zone_id(dis_with_zone_id, train_file):
     gp['drop_percent'] = gp.in_out / gp.previous
     gp.drop_percent.fillna(1, inplace=True)
     return gp
+
 
 
 #Far from the home&company, and only 1 or 2 times
@@ -263,7 +279,7 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
 
 
 def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
-    logger.debug(f'Cal the centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
+    logger.debug(f'centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
     lon_threshold = 0.00001 * threshold * 2
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     zoneid_replaced = []
@@ -295,7 +311,7 @@ def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
 def adjust_add_with_centers(address_list, threshold):
     old_len = len(address_list.drop_duplicates(['out_id', 'zoneid']))
     reduce_list = get_center_address_need_reduce(address_list, threshold)
-    logger.debug(f'The reduce list is :{len(reduce_list)}, \n {reduce_list[:10]}')
+    #logger.debug(f'The reduce list is :{len(reduce_list)}, \n {reduce_list[:10]}')
     reduce_list = reduce_list[['out_id', 'zoneid', 'zoneid_new']]
 
     address_list = pd.merge(address_list,reduce_list, how='left')
@@ -310,7 +326,7 @@ def adjust_add_with_centers(address_list, threshold):
 
 def get_home_company():
 
-    train = get_train_with_adjust_position(100, train_file, test_file)
+    train = get_train_with_adjust_position(200, train_file, test_file)
 
 
 
