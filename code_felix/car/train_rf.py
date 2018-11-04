@@ -80,7 +80,7 @@ def gen_sub(sub, threshold, **kw):
 
     loss = cal_loss_for_df(predict_list)
     if loss:
-        logger.debug(f"Loss is {loss}, args:{args}")
+        logger.debug(f"Loss is {loss} on {len(predict_list)} samples, args:{args}")
     else:
         sub = predict_list[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
