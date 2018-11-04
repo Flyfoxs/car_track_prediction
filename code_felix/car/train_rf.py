@@ -1,25 +1,24 @@
 from sklearn.ensemble import RandomForestClassifier
 
-from code_felix.car.utils import *
+from code_felix.car.utils import get_feature_columns
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
 # 'end_lat_adj', 'end_lon_adj','duration',  'end_lat', 'end_lon',  'day','start_lat_adj', 'start_lon_adj',
 from code_felix.utils_.other import replace_invalid_filename_char
 
-feature_col = ['weekday', 'weekend', #'weekday',
-               #'holiday',
-               'hour','start_zoneid', ]
+
+topn=0
 
 def get_features(out_id, df):
     df = df[df.out_id == out_id]
-    #logger.debug(f'Label:from {dup_label.min()} to {dup_label.max()}, length:{len(dup_label)} ')
-    return df[feature_col] , df['end_zoneid'].astype('category')
+    global topn
+    return get_feature_columns(df, topn) , df['end_zoneid'].astype('category')
 
 def train_model(X, Y, **kw):
     clf = RandomForestClassifier(n_estimators=100, **kw, random_state=0)
 
     clf = clf.fit(X, Y)
-    print(clf.feature_importances_)
+    #print(clf.feature_importances_)
     return clf
 
 def get_mode(out_id, df, **kw):
@@ -28,21 +27,25 @@ def get_mode(out_id, df, **kw):
     return model
 
 def predict(model,  X):
-    #X = df[df.out_id==out_id]
-    return model.predict_proba(X[feature_col])
+    global topn
+    return model.predict_proba(get_feature_columns(X,topn))
 
 
 @file_cache(overwrite=True)
-def gen_sub(sub, threshold, **kw):
+def gen_sub(sub, threshold, top_n, **kw):
     args = locals()
 
+    global topn
+    topn = top_n
 
-    if sub:
+    if sub == True:
         # Real get sub file
         cur_train = train_file
         cur_test = test_file
     else:
         # Validate file
+        train_train_file = f'{DATA_DIR}/train_val_{sub}.csv'
+        train_validate_file = f'{DATA_DIR}/test_val_{sub}.csv'
         cur_train = train_train_file
         cur_test = train_validate_file
 
@@ -52,6 +55,14 @@ def gen_sub(sub, threshold, **kw):
     #     train = clean_train_useless(train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+
+    # #topn=0
+    # if topn>0:
+    #     train  = cal_distance_2_centers(train, train_file, threshold, topn)
+    #     logger.debug(f'Train columns: {train.columns}')
+    #     test   = cal_distance_2_centers(test, train_file, threshold, topn)
+
+
     test['predict_id'] = None
     test['predict_zone_id'] = None
 
@@ -86,8 +97,9 @@ def gen_sub(sub, threshold, **kw):
 
     loss = cal_loss_for_df(predict_list)
     if loss:
-        logger.debug(f"Loss is {loss} on {car_num} cars, {len(predict_list)} samples, args:{args}")
-    else:
+        logger.debug(f"Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, {len(predict_list)} samples, args:{args}")
+
+    if sub==True or loss is None:
         sub = predict_list[['predict_lat', 'predict_lon']]
         sub.columns= ['end_lat','end_lon']
         sub.index.name = 'r_key'
@@ -101,7 +113,10 @@ def gen_sub(sub, threshold, **kw):
 
 if __name__ == '__main__':
     #0.42434
-    gen_sub(False, 220, max_depth=4)
+    gen_sub(100, 220, 0, max_depth=4)
+    # for topn in [4,5,7,0,]:
+    #     for sub in [100]:
+    #         gen_sub(sub, 220, topn, max_depth=4)
 
     #
     # for max_depth in [4, 5]:

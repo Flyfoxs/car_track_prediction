@@ -111,7 +111,9 @@ def get_center_address(threshold, train, test):
     return mini
 
 @file_cache(overwrite=False)
-def reduce_address(threshold):
+def reduce_address(threshold, train_file):
+
+    test_file = train_file.replace('train_', 'test_')
 
     #Cal center of zoneid base on lat
     dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(100, threshold))
@@ -241,7 +243,7 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
     out_id_split_list = []
     for out_id in out_id_list:
         out_id_mini = mini.loc[mini.out_id==out_id,:]
-        logger.debug(f'Thre are {len(out_id_mini)} zoneid need to reduce for out_id:{out_id}')
+        logger.debug(f'{len(out_id_mini)} zoneid need to reduce for out_id:{out_id} with threshold:{threshold}')
         out_id_mini = out_id_mini.sort_values([ 'center_lon', 'center_lat'])
         out_id_mini = out_id_mini.reset_index(drop=True)
 
@@ -315,15 +317,17 @@ def get_home_company():
 
 if __name__ == '__main__':
     #for threshold in range(50, 500, 50):
-    threshold = 100
+    # threshold = 100
+    #
+    #
+    # df = reduce_address(threshold)
+    # logger.debug(df.shape)
+    # addressid = df[['out_id', 'zoneid']].drop_duplicates()
+    # logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
+    #
+    # df = get_train_with_adjust_position(100, train_file)
+    # logger.debug(df.shape)
+    #
+    # #get_distance_zoneid(100, '358962079107966', 72, 73, train_file, test_file)
 
-
-    df = reduce_address(threshold)
-    logger.debug(df.shape)
-    addressid = df[['out_id', 'zoneid']].drop_duplicates()
-    logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
-
-    df = get_train_with_adjust_position(100, train_train_file)
-    logger.debug(df.shape)
-
-    #get_distance_zoneid(100, '358962079107966', 72, 73, train_file, test_file)
+    pass

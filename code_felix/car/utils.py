@@ -17,8 +17,7 @@ from functools import lru_cache
 DATA_DIR = './input'
 
 
-train_train_file = f'{DATA_DIR}/train_train.csv'
-train_validate_file = f'{DATA_DIR}/train_validate.csv'
+
 
 train_file =  f'{DATA_DIR}/train_new.csv'
 test_file  =  f'{DATA_DIR}/test_new.csv'
@@ -108,19 +107,19 @@ def get_time_extend(file):
 
 
 
-def adjust_position_2_center(threshold, df):
+def adjust_position_2_center(threshold, df, train_file):
     df.out_id = df.out_id.astype(str)
 
     logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
     from code_felix.car.distance_reduce import reduce_address
-    zoneid = reduce_address(threshold)
+    zoneid = reduce_address(threshold, train_file)
     zoneid.out_id = zoneid.out_id.astype(str)
 
 
     zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
     zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
 
-    logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
+    #logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
     all = pd.merge(df, zoneid, how='left', )
     check_exception(all ,'r_key')
@@ -139,15 +138,18 @@ def adjust_position_2_center(threshold, df):
 @file_cache(overwrite=False)
 def get_train_with_adjust_position(threshold, train_file):
     train = get_train_with_distance(train_file)
-    all = adjust_position_2_center(threshold, train)
+    all = adjust_position_2_center(threshold, train, train_file)
 
     all = fill_out_id_attr( train_file, all,)
     all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
+
+    all = cal_distance_2_centers(all, train_file, threshold, 10)
     return all
 
 @timed()
 def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
+    from code_felix.car.distance_reduce import getDistance
     center_add = get_centers_add(train_file, threshold, topn)
     add_with_zoneid = pd.merge(add_with_zoneid, center_add, on='out_id', how='left')
     for i in range(0,topn):
@@ -165,7 +167,7 @@ def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
 @timed()
 def get_centers_add(train_file, threshold, topn):
     from code_felix.car.distance_reduce import count_in_out_4_zone_id, reduce_address
-    zoneid = reduce_address(threshold)
+    zoneid = reduce_address(threshold, train_file)
     in_out = count_in_out_4_zone_id(zoneid, train_file)
     in_out = in_out[(in_out.sn <= topn)]
 
@@ -184,11 +186,12 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     if 'end_time' in test:
         del test['end_time']
 
-    all = adjust_position_2_center(threshold, test)
+    all = adjust_position_2_center(threshold, test, train_file)
 
     all = fill_out_id_attr( train_file, all,)
     all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
+    all = cal_distance_2_centers(all, train_file, threshold, 10)
     return all
 
 
@@ -242,6 +245,17 @@ def cal_loss_for_df(df):
         logger.debug(f'Sub model, for car:{df.out_id[0]} with {len(df)} records')
         return None
 
+def get_feature_columns(df,topn):
+    feature_col = ['weekday', 'weekend',  # 'weekday',
+                   # 'holiday',
+                   'hour', 'start_zoneid', ]
+
+    for i in range(0, topn):
+        col = f'dis_center_{i}'
+        if col in df:
+            feature_col.append(col)
+    #logger.debug(f'Final feature col:{feature_col}')
+    return df[feature_col]
 
 # def clean_train_useless(df):
 #     df['last_time'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['start_time'].transform('max')
