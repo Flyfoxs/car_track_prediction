@@ -37,6 +37,11 @@ for out_id in outid_list:
         validate_list.append(mini.sample(10))
 validate = pd.concat(validate_list)
 
+train_train_file = f'{DATA_DIR}/train_train_{num_sample}.csv'
+train_validate_file = f'{DATA_DIR}/train_validate_{num_sample}.csv'
+
+
+
 validate.to_csv(train_validate_file,index=None)
 print(len(validate))
 

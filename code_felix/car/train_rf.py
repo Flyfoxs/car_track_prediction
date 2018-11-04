@@ -39,18 +39,20 @@ def predict(model,  X):
 def gen_sub(sub, threshold, topn, **kw):
     args = locals()
 
-    if sub:
+    if sub==True:
         # Real get sub file
         cur_train = train_file
         cur_test = test_file
     else:
+
         # Validate file
-        cur_train = train_train_file
-        cur_test = train_validate_file
+        # cur_train = f'{DATA_DIR}/train_train.csv'
+        # cur_test = f'{DATA_DIR}/train_validate.csv'
+        cur_train = f'{DATA_DIR}/train_train_{sub}.csv'
+        cur_test = f'{DATA_DIR}/train_validate_{sub}.csv'
 
 
     train = get_train_with_adjust_position(threshold, cur_train)
-
     # if clean:
     #     train = clean_train_useless(train)
 
@@ -111,14 +113,20 @@ def gen_sub(sub, threshold, topn, **kw):
     return test
 
 def get_zone_id(predict_id, train, out_id):
-    cat = pd.Categorical(train.loc[train.out_id == out_id].end_zoneid).categories
+    mini = train.loc[train.out_id==out_id]
+    mini = mini.end_zoneid.sort_values().drop_duplicates()
+    mini = mini.reset_index(drop=True)
+    zone_id = mini.loc[predict_id].values
     #logger.debug(f'Convert {predict_id} to {zone_id}')
-    return cat[predict_id]
+    return zone_id
+
+
+
 
 if __name__ == '__main__':
     #gen_sub(False, 500, max_depth=4, n_estimators=20, )
 
-    for sub in [False, True]:
+    for sub in [5]:
         for max_depth in [4]:
             #for adjust_test in [0, 1000, 2000, 3000, 4000, 10000]:
                 for estimator in [20]:
