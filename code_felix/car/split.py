@@ -20,6 +20,7 @@ else:
 
     outid_list.append('861181511175991')
     outid_list.append('861971709008361')
+    outid_list.append('673691705008931')
 
 print(f'outid_len:{len(outid_list)}')
 train = train[train.out_id.isin(outid_list)]

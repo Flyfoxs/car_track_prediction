@@ -86,7 +86,8 @@ def gen_sub(sub, threshold, top_n, **kw):
 
         predict_result = get_zone_inf(out_id, train, test)
         sing_loss = cal_loss_for_df(predict_result)
-        logger.debug(f"{count}/{car_num} loss:{'{:,.4f}'.format(sing_loss)} for outid:{out_id}, {result.shape} records, sub:{sub}")
+        logger.debug(f"{count}/{car_num} loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)} "
+                     f"for outid:{out_id}, {result.shape} records, sub:{sub}")
 
         predict_list.append(predict_result)
 
@@ -107,7 +108,7 @@ def gen_sub(sub, threshold, top_n, **kw):
     sub_df.columns= ['end_lat','end_lon']
     sub_df.index.name = 'r_key'
     file_ensemble = f'./output/{threshold}/result_rf_{args}.h5'
-    save_df(sub_df, file_ensemble)
+    save_df(predict_list, file_ensemble)
     if sub==True or loss is None:
         sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
         sub_df.to_csv(sub_file)

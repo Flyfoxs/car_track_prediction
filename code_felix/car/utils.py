@@ -110,25 +110,25 @@ def get_time_extend(file):
 def adjust_position_2_center(threshold, df, train_file):
     df.out_id = df.out_id.astype(str)
 
-    logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
+    # logger.debug(df[df.r_key=='SDK-XJ_78d749a376e190685716a51a6704010b'].values)
     from code_felix.car.distance_reduce import reduce_address
     zoneid = reduce_address(threshold, train_file)
     zoneid.out_id = zoneid.out_id.astype(str)
 
 
-    zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid']]
-    zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid']
+    zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid','sn']]
+    zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid','sn']
 
     #logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
-    all = pd.merge(df, zoneid, how='left', )
+    all = pd.merge(df, zoneid, how='left', on=['out_id', 'start_lat', 'start_lon'] )
     check_exception(all ,'r_key')
 
     all.start_zoneid = all.start_zoneid.astype(int)
 
     if 'end_time' in df:
-        zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid']
-        all = pd.merge(all, zoneid, how='left', )
+        zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid','sn']
+        all = pd.merge(all, zoneid, how='left',on=['out_id', 'end_lat', 'end_lon'] )
         check_exception(all, 'r_key')
         all.end_zoneid = all.end_zoneid.astype(int)
 
@@ -159,6 +159,12 @@ def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
                                                           row[f'center_lat_{i}'], row[f'center_lon_{i}']), axis=1)
 
         add_with_zoneid['dis_center_%s' % i] = round(add_with_zoneid['dis_center_%s'%i])
+
+
+    #In case some zoneid only have several center
+    add_with_zoneid[['dis_center_%s' % i for i in range(0, topn)]] = \
+            add_with_zoneid[['dis_center_%s' % i for i in range(0, topn)]].fillna( method='ffill', axis=1)
+
     add_with_zoneid.drop([f'center_lat_{i}' for i in range(0, topn)], axis=1)
     add_with_zoneid.drop([f'center_lon_{i}' for i in range(0, topn)], axis=1)
     return add_with_zoneid
@@ -243,7 +249,7 @@ def cal_loss_for_df(df):
             # logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
-        logger.debug(f'Sub model, for car:{df.out_id[0]} with {len(df)} records')
+        logger.debug(f"Sub model, for car:{df.out_id.values[0]} with {len(df)} records")
         return None
 
 def get_feature_columns(df,topn):
