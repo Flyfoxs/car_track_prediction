@@ -4,6 +4,7 @@ from collections import defaultdict
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
+from code_felix.utils_.other import replace_invalid_filename_char
 from code_felix.utils_.util_log import *
 import matplotlib as plt
 try:
@@ -69,3 +70,13 @@ def flat_columns(df):
     df.columns = ['_'.join(np.array(item, str)) for item in df.columns]
     df = df.reset_index()
     return df
+
+def save_df(df, path, format='h5'):
+    import os
+    if not os.path.exists(os.path.dirname(path)):
+        os.mkdir(os.path.dirname(path))
+
+    if format=='h5':
+        df.to_hdf(replace_invalid_filename_char(path), 'key', index=True)
+    return path
+

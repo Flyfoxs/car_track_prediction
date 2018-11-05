@@ -91,20 +91,26 @@ def gen_sub(sub, threshold, top_n, **kw):
         predict_list.append(predict_result)
 
     predict_list = pd.concat(predict_list)
+    predict_list.set_index('r_key',inplace=True)
+
+    #logger.debug(predict_list.head())
 
     #Reorder predict result
-    predict_list = test.drop(test.columns, axis=1).join(predict_list)
+    predict_list = pd.DataFrame(index=test.r_key).join(predict_list)
 
     loss = cal_loss_for_df(predict_list)
     if loss:
         logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, {len(predict_list)} samples, args:{args}")
 
+
+    sub_df = predict_list[['predict_lat', 'predict_lon']]
+    sub_df.columns= ['end_lat','end_lon']
+    sub_df.index.name = 'r_key'
+    file_ensemble = f'./output/{threshold}/result_rf_{args}.h5'
+    save_df(sub_df, file_ensemble)
     if sub==True or loss is None:
-        sub = predict_list[['predict_lat', 'predict_lon']]
-        sub.columns= ['end_lat','end_lon']
-        sub.index.name = 'r_key'
         sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
-        sub.to_csv(sub_file)
+        sub_df.to_csv(sub_file)
         logger.debug(f'Sub file is save to {sub_file}')
 
     return predict_list

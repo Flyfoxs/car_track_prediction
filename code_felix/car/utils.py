@@ -141,7 +141,7 @@ def get_train_with_adjust_position(threshold, train_file):
     all = adjust_position_2_center(threshold, train, train_file)
 
     all = fill_out_id_attr( train_file, all,)
-    all = all.set_index('r_key')
+    # all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
 
     all = cal_distance_2_centers(all, train_file, threshold, 10)
@@ -189,9 +189,10 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     all = adjust_position_2_center(threshold, test, train_file)
 
     all = fill_out_id_attr( train_file, all,)
-    all = all.set_index('r_key')
+    # all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
     all = cal_distance_2_centers(all, train_file, threshold, 10)
+    # logger.debug(all.head(1))
     return all
 
 
@@ -225,7 +226,7 @@ def get_zone_inf(out_id, train, test):
     predict_cols = ['predict_zone_id', 'predict_lat','predict_lon']
     test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
     test[predict_cols] = mini_train.loc[test.predict_id].values
-
+    # logger.debug(test.head(1))
     return test
 
 
@@ -256,6 +257,8 @@ def get_feature_columns(df,topn):
             feature_col.append(col)
     #logger.debug(f'Final feature col:{feature_col}')
     return df[feature_col]
+
+
 
 # def clean_train_useless(df):
 #     df['last_time'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['start_time'].transform('max')
