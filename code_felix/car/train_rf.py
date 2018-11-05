@@ -116,7 +116,8 @@ if __name__ == '__main__':
     #gen_sub(200, 220, 0, max_depth=4)
 
     for threshold in [220, 300, 400, 500, 600]:
-        gen_sub('all', threshold, 0, max_depth=4)
+        for sub in [100, True, 'all']:
+            gen_sub(sub, threshold, 0, max_depth=4)
 
 
     # for topn in [4,5,7,0,]:

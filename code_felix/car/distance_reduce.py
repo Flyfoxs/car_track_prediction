@@ -340,11 +340,10 @@ def get_home_company():
 
 
 if __name__ == '__main__':
-    #for threshold in range(50, 500, 50):
-    # threshold = 100
-    #
-    #
-    # df = reduce_address(threshold)
+    for threshold in [300,  500, 600,220,400, ]:
+        for file in ['train_new.csv', 'train_val_all.csv', ]:
+            file = f'./input/{file}'
+            reduce_address(threshold,file)
     # logger.debug(df.shape)
     # addressid = df[['out_id', 'zoneid']].drop_duplicates()
     # logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")
