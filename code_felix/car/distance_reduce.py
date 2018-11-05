@@ -122,14 +122,19 @@ def reduce_address(threshold, train_file):
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
-    # dis_with_zoneid = reorder_zoneid_frequency(dis_with_zoneid, train_file)
+    freq = count_in_out_4_zone_id(dis_with_zoneid, train_file)
+    # freq = freq[['out_id', 'zoneid', 'sn']].drop_duplicates()
+
+    dis_with_zoneid = pd.merge(dis_with_zoneid, freq, how='left')
+
+    logger.debug(f'dis_with_zoneid columns:{dis_with_zoneid.columns}')
     ## 'lat_2', 'lon_2',  'distance_gap' , 'lat_f', 'lon_f', 'zoneid_new', 'zoneid_raw'
     dis_with_zoneid = dis_with_zoneid[['out_id', 'lat', 'lon',
-            'zoneid', 'center_lat', 'center_lon',
-            # 'distance_2_center',
-            #    'out', 'in' ,'in_out',
-            #  'in_total', 'out_total', 'in_out_total'	,
-            #  'in_per',	'out_per',	'in_out_per' ,
+            'zoneid','sn', 'center_lat', 'center_lon',
+            'distance_2_center',
+               'out', 'in' ,'in_out',
+             'in_total', 'out_total', 'in_out_total'	,
+             'in_per',	'out_per',	'in_out_per' ,
                                        ]]
 
     return dis_with_zoneid
@@ -139,9 +144,11 @@ def reorder_zoneid_frequency(dis_with_zone_id, train_file):
     # freq = freq[['out_id', 'zoneid', 'sn']].drop_duplicates()
 
     dis_with_zone_id = pd.merge(dis_with_zone_id,freq, how='left')
-    dis_with_zone_id.zoneid, dis_with_zone_id.sn =  dis_with_zone_id.sn, dis_with_zone_id.zoneid
+    dis_with_zone_id.zoneid = dis_with_zone_id.apply(lambda row: row.sn if pd.notnull(row.sn) else 9000+row.zoneid, axis=1)
 
-    dis_with_zone_id.zoneid.fillna('999',inplace=True)
+    # dis_with_zone_id.zoneid, dis_with_zone_id.sn =  dis_with_zone_id.sn, dis_with_zone_id.zoneid
+    #
+    # dis_with_zone_id.zoneid.fillna('999',inplace=True)
     return dis_with_zone_id
 
 

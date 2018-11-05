@@ -97,7 +97,7 @@ def gen_sub(sub, threshold, top_n, **kw):
 
     loss = cal_loss_for_df(predict_list)
     if loss:
-        logger.debug(f"Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, {len(predict_list)} samples, args:{args}")
+        logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, {len(predict_list)} samples, args:{args}")
 
     if sub==True or loss is None:
         sub = predict_list[['predict_lat', 'predict_lon']]
