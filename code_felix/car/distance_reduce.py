@@ -122,14 +122,15 @@ def reduce_address(threshold, train_file):
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
-    dis_with_zoneid = reorder_zoneid_frequency(dis_with_zoneid, train_file)
+    # dis_with_zoneid = reorder_zoneid_frequency(dis_with_zoneid, train_file)
     ## 'lat_2', 'lon_2',  'distance_gap' , 'lat_f', 'lon_f', 'zoneid_new', 'zoneid_raw'
     dis_with_zoneid = dis_with_zoneid[['out_id', 'lat', 'lon',
             'zoneid', 'center_lat', 'center_lon',
-            'distance_2_center',
-               'out', 'in' ,'in_out',
-             'in_total', 'out_total', 'in_out_total'	,
-             'in_per',	'out_per',	'in_out_per' ,]]
+            # 'distance_2_center',
+            #    'out', 'in' ,'in_out',
+            #  'in_total', 'out_total', 'in_out_total'	,
+            #  'in_per',	'out_per',	'in_out_per' ,
+                                       ]]
 
     return dis_with_zoneid
 

@@ -86,7 +86,7 @@ def gen_sub(sub, threshold, top_n, **kw):
 
         predict_result = get_zone_inf(out_id, train, test)
         sing_loss = cal_loss_for_df(predict_result)
-        logger.debug(f'{count}/{car_num} loss:{sing_loss} for outid:{out_id}, {result.shape} records, sub:{sub}')
+        logger.debug(f"{count}/{car_num} loss:{'{:,.4f}'.format(sing_loss)} for outid:{out_id}, {result.shape} records, sub:{sub}")
 
         predict_list.append(predict_result)
 
