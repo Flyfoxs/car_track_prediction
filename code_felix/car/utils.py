@@ -117,7 +117,7 @@ def adjust_position_2_center(threshold, df, train_file):
 
 
     zoneid = zoneid[['out_id', 'lat', 'lon', 'center_lat', 'center_lon', 'zoneid','sn']]
-    zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid','sn']
+    zoneid.columns = ['out_id', 'start_lat', 'start_lon', 'start_lat_adj', 'start_lon_adj', 'start_zoneid', 'start_sn']
 
     #logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
@@ -127,7 +127,7 @@ def adjust_position_2_center(threshold, df, train_file):
     all.start_zoneid = all.start_zoneid.astype(int)
 
     if 'end_time' in df:
-        zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid','sn']
+        zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid','end_sn']
         all = pd.merge(all, zoneid, how='left',on=['out_id', 'end_lat', 'end_lon'] )
         check_exception(all, 'r_key')
         all.end_zoneid = all.end_zoneid.astype(int)
@@ -226,14 +226,14 @@ def get_zone_inf(out_id, train, test):
     mini_train = train[train.out_id==out_id]
 
     #logger.debug(mini.columns)
-    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj']].drop_duplicates()
+    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj', 'end_sn']].drop_duplicates()
     mini_train = mini_train.sort_values('end_zoneid').reset_index(drop=True)
 
-    predict_cols = ['predict_zone_id', 'predict_lat','predict_lon']
-    test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
-    test[predict_cols] = mini_train.loc[test.predict_id].values
+    predict_cols = ['predict_zone_id', 'predict_lat','predict_lon', 'predict_sn']
+    mini_test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
+    mini_test[predict_cols] = mini_train.loc[test.predict_id].values
     # logger.debug(test.head(1))
-    return test
+    return mini_test
 
 
 def cal_loss_for_df(df):
@@ -254,7 +254,7 @@ def cal_loss_for_df(df):
 
 def get_feature_columns(df,topn):
     feature_col = ['weekday', 'weekend',  # 'weekday',
-                   'holiday',
+                   # 'holiday',
                    'hour', 'start_zoneid', ]
 
     for i in range(0, topn):

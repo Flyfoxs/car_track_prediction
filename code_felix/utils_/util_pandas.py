@@ -73,10 +73,12 @@ def flat_columns(df):
 
 def save_df(df, path, format='h5'):
     import os
+    path = replace_invalid_filename_char(path)
+    logger.debug("Save ensmeble result to file:%s" % path)
     if not os.path.exists(os.path.dirname(path)):
         os.mkdir(os.path.dirname(path))
 
     if format=='h5':
-        df.to_hdf(replace_invalid_filename_char(path), 'key', index=True)
+        df.to_hdf(path, 'key', index=True)
     return path
 

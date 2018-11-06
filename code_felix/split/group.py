@@ -11,8 +11,16 @@ def split_to_group(num=5, base_file='./'):
     distinance, avg, max
     count(*), count(zoneid) in train, test
 
+    train: count(end_zoneid/start_zoneid)
+
     :param num:
     :param base_file:
     :return:
     """
     pass
+
+def analysis_train_test(threshold=500):
+    train = get_train_with_adjust_position(threshold, './input/train_new.csv')
+    train.groupby()
+
+    test = get_train_with_adjust_position(threshold, './input/test_new.csv')
