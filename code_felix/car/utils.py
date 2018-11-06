@@ -261,8 +261,10 @@ def get_feature_columns(df,topn):
         col = f'dis_center_{i}'
         if col in df:
             feature_col.append(col)
+    X_df = df[feature_col]
+    # check_exception(X_df, 'out_id')
     #logger.debug(f'Final feature col:{feature_col}')
-    return df[feature_col]
+    return X_df
 
 
 
