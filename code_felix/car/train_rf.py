@@ -15,7 +15,9 @@ def get_features(out_id, df):
     return get_feature_columns(df, topn) , df['end_zoneid'].astype('category')
 
 def train_model(X, Y, **kw):
-    clf = RandomForestClassifier(n_estimators=100, **kw, random_state=0)
+    estimate = kw['estimate'] if  'estimate' in kw else 100
+    max_depth  = kw['max_depth'] if 'max_depth' in kw else 4
+    clf = RandomForestClassifier(n_estimators=100, max_depth=max_depth, random_state=0)
 
     clf = clf.fit(X, Y)
     #print(clf.feature_importances_)
@@ -107,7 +109,7 @@ def gen_sub(sub, threshold, top_n, **kw):
     sub_df = predict_list[['predict_lat', 'predict_lon']]
     sub_df.columns= ['end_lat','end_lon']
     sub_df.index.name = 'r_key'
-    file_ensemble = f'./output/{threshold}/result_rf_{args}.h5'
+    file_ensemble = f'./output/{threshold}/ensemble_rf_{args}.h5'
     save_df(predict_list, file_ensemble)
     if sub==True or loss is None:
         sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')

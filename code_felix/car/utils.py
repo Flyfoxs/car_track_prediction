@@ -144,7 +144,7 @@ def get_train_with_adjust_position(threshold, train_file):
     # all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
 
-    all = cal_distance_2_centers(all, train_file, threshold, 10)
+    all = cal_distance_2_centers(all, train_file, threshold, 4)
     return all
 
 @timed()
@@ -197,7 +197,7 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     all = fill_out_id_attr( train_file, all,)
     # all = all.set_index('r_key')
     all.drop(['index'], axis=1, inplace=True)
-    all = cal_distance_2_centers(all, train_file, threshold, 10)
+    all = cal_distance_2_centers(all, train_file, threshold, 4)
     # logger.debug(all.head(1))
     return all
 
@@ -254,7 +254,7 @@ def cal_loss_for_df(df):
 
 def get_feature_columns(df,topn):
     feature_col = ['weekday', 'weekend',  # 'weekday',
-                   # 'holiday',
+                   'holiday',
                    'hour', 'start_zoneid', ]
 
     for i in range(0, topn):
