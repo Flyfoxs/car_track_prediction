@@ -32,6 +32,9 @@
 * Top 10 KNN
 * 
 
+[LightGBM] [Warning] Accuracy may be bad since you didn't set num_leaves and 2^max_depth > num_leaves.
+
+
 ## 
 
 ## Install
