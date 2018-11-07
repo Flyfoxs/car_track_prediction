@@ -19,7 +19,7 @@ def train_model(X, Y, **kw):
     max_depth  = kw['max_depth'] if 'max_depth' in kw else 4
     clf = RandomForestClassifier(n_estimators=100, max_depth=max_depth, random_state=0)
 
-    clf = clf.fit(X, Y)
+    clf = clf.fit(X, Y.cat.codes)
     #print(clf.feature_importances_)
     return clf
 

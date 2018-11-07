@@ -176,7 +176,7 @@ def analysis_start_zone_id(threshold, train_file, df=None):
 
     for col in train_with_zoneid:
         if 'sz_' in col:
-            logger.debug(f'Try to fillna for col#{col}:{train_with_zoneid[col].mean()}')
+            logger.debug(f'Try to fillna for col#{col}:{round(train_with_zoneid[col].mean(),5)}')
             train_with_zoneid[col].fillna(train_with_zoneid[col].mean(), inplace=True)
 
     return train_with_zoneid
@@ -287,7 +287,7 @@ def cal_loss_for_df(df):
             # logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
         return final_loss
     else:
-        logger.debug(f"Sub model, for car:{df.out_id.values[0]} with {len(df)} records")
+        #logger.debug(f"Sub model, for car:{df.out_id.values[0]} with {len(df)} records")
         return None
 
 @lru_cache()

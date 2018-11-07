@@ -65,12 +65,17 @@ def print_imp_list( train, clf, order_by_wight=True, show_zero=True):
 
 
 
-
-def get_gpu_paras():
+from functools import lru_cache
+@lru_cache()
+def get_gpu_paras(kind='lgb'):
     import os
     if 'CUDA_VISIBLE_DEVICES' in os.environ:
-        gpu_params = {'tree_method': 'gpu_hist', 'predictor': 'gpu_predictor'}
-        logger.debug(f"GPU is enable with:{gpu_params}")
+        if kind == 'lgb':
+            gpu_params = {'device': 'gpu', 'gpu_platform_id': 0,'gpu_device_id': 0}
+        else:
+            gpu_params = {'tree_method': 'gpu_hist', 'predictor': 'gpu_predictor'}
+        logger.debug(f"GPU is enable with{kind}, :{gpu_params}")
+
     else:
         logger.debug("GPU is disable")
         gpu_params = {}

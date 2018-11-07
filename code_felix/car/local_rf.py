@@ -3,6 +3,6 @@
 from code_felix.car.train_rf import *
 
 
-
-for feature_gp in range(0,4):
-    gen_sub(100, 220, feature_gp, max_depth=4)
+# gen_sub(100, 220, 0, max_depth=4)
+# for feature_gp in range(0,4):
+#     gen_sub(100, 220, feature_gp, max_depth=4)
