@@ -67,9 +67,11 @@ def check_exception(df, index=None):
 
 
 def flat_columns(df):
-    df.columns = ['_'.join(np.array(item, str)) for item in df.columns]
-    df = df.reset_index()
+    df.columns = ['_'.join(drop_empty_item(item)) for item in df.columns]
     return df
+
+def drop_empty_item(item):
+    return [str(val) for val in item if val is not None and len(str(val))>0]
 
 def save_df(df, path, format='h5'):
     import os

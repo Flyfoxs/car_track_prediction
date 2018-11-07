@@ -50,7 +50,7 @@ def get_train_with_distance(train_file):
 @timed()
 def get_out_id_attr(file):
     train = get_train_with_distance(file)
-    gp = train.groupby('out_id').agg({'distance':['min', 'max', 'mean']})
+    gp = train.groupby('out_id', as_index=False).agg({'distance':['min', 'max', 'mean']})
     gp = flat_columns(gp)
     return round(gp.reset_index())
 
@@ -65,7 +65,7 @@ def fill_out_id_attr(file, df=None, ):
 @timed()
 def get_end_zoneid_attr():
     df = get_train_with_adjust_position(100,train_file, test_file)
-    gp = df.groupby(['out_id', 'end_zoneid']).agg({'last_date':['min', 'max', 'count']})
+    gp = df.groupby(['out_id', 'end_zoneid'],as_index=False  ).agg({'last_date':['min', 'max', 'count']})
     gp = flat_columns(gp)
     return gp
 
@@ -142,15 +142,37 @@ def get_train_with_adjust_position(threshold, train_file):
 
     all = fill_out_id_attr( train_file, all,)
     # all = all.set_index('r_key')
-    all.drop(['index'], axis=1, inplace=True)
+    #all.drop(['index'], axis=1, inplace=True)
 
     all = cal_distance_2_centers(all, train_file, threshold, 4)
     return all
 
+def analysis_start_zone_id(threshold, train_file, df=None):
+    train = get_train_with_adjust_position(threshold, train_file)
+    start_zoneid = train.groupby(['out_id', 'start_zoneid', ], as_index=False).agg(
+        {'duration': ['min', 'max', 'mean', 'sum'],
+         'distance': ['min', 'max', 'mean', 'sum'],
+         'end_zoneid': ['nunique', 'count'],
+         'start_sn': 'max'
+         })
+
+    logger.debug([item for item in start_zoneid.columns])
+    start_zoneid = flat_columns(start_zoneid)
+    logger.debug(start_zoneid.columns)
+
+    if df is None:
+        logger.debug(train.columns)
+        train_with_zoneid = pd.merge(train, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
+    else:
+        logger.debug(df.columns)
+        train_with_zoneid = pd.merge(df, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
+    return train_with_zoneid
 @timed()
 def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
     from code_felix.car.distance_reduce import getDistance
     center_add = get_centers_add(train_file, threshold, topn)
+    logger.debug(center_add.columns)
+    logger.debug(add_with_zoneid.columns)
     add_with_zoneid = pd.merge(add_with_zoneid, center_add, on='out_id', how='left')
     for i in range(0,topn):
         logger.debug("Try to cal distance to center#%s" % i)
@@ -182,6 +204,7 @@ def get_centers_add(train_file, threshold, topn):
 
     # gp['dis_home_company'] = gp.apply(lambda row: getDistance(row.center_lat, row.center_lon, row.lat_n, row.lon_n), axis=1)
     gp = in_out.pivot_table(['center_lat', 'center_lon'], index=['out_id'], columns='sn')
+    gp.reset_index(inplace=True)
     gp = flat_columns(gp)
     return gp
 
@@ -196,7 +219,7 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
 
     all = fill_out_id_attr( train_file, all,)
     # all = all.set_index('r_key')
-    all.drop(['index'], axis=1, inplace=True)
+    # all.drop(['index'], axis=1, inplace=True)
     all = cal_distance_2_centers(all, train_file, threshold, 4)
     # logger.debug(all.head(1))
     return all

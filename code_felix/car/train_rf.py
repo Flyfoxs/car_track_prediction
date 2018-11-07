@@ -33,6 +33,7 @@ def predict(model,  X):
     return model.predict_proba(get_feature_columns(X,topn))
 
 
+@timed()
 @file_cache(overwrite=True)
 def gen_sub(sub, threshold, top_n, **kw):
     args = locals()
@@ -53,16 +54,10 @@ def gen_sub(sub, threshold, top_n, **kw):
 
 
     train = get_train_with_adjust_position(threshold, cur_train)
-    # if clean:
-    #     train = clean_train_useless(train)
+    train = analysis_start_zone_id(threshold, cur_train, train)
 
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-
-    # #topn=0
-    # if topn>0:
-    #     train  = cal_distance_2_centers(train, train_file, threshold, topn)
-    #     logger.debug(f'Train columns: {train.columns}')
-    #     test   = cal_distance_2_centers(test, train_file, threshold, topn)
+    test = analysis_start_zone_id(threshold, cur_train, test)
 
 
     test['predict_id'] = None
