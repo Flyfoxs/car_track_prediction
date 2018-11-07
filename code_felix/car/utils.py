@@ -275,19 +275,23 @@ def cal_loss_for_df(df):
         logger.debug(f"Sub model, for car:{df.out_id.values[0]} with {len(df)} records")
         return None
 
-def get_feature_columns(df,topn):
+@lru_cache()
+def get_feature_columns(gp='1'):
+    gp = str(gp)
     feature_col = ['weekday', 'weekend',  # 'weekday',
                    # 'holiday',
-                   'hour', 'start_zoneid', ]
+                   'hour', 'start_zoneid', 'dis_center_0', #'dis_center_1','dis_center_2'
+                   ]
+    if gp=='1':
+        pass
+    if gp=='2':
+        pass
+    if gp=='3':
+        pass
 
-    for i in range(0, topn):
-        col = f'dis_center_{i}'
-        if col in df:
-            feature_col.append(col)
-    X_df = df[feature_col]
-    # check_exception(X_df, 'out_id')
-    #logger.debug(f'Final feature col:{feature_col}')
-    return X_df
+    logger.debug(f'The training feature gp{gp}, feature_col{feature_col}')
+
+    return feature_col
 
 
 

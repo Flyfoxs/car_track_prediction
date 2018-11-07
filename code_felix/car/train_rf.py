@@ -12,7 +12,7 @@ topn=0
 def get_features(out_id, df):
     df = df[df.out_id == out_id]
     global topn
-    return get_feature_columns(df, topn) , df['end_zoneid'].astype('category')
+    return df[get_feature_columns(1)] , df['end_zoneid'].astype('category')
 
 def train_model(X, Y, **kw):
     estimate = kw['estimate'] if  'estimate' in kw else 100
@@ -30,7 +30,7 @@ def get_mode(out_id, df, **kw):
 
 def predict(model,  X):
     global topn
-    return model.predict_proba(get_feature_columns(X,topn))
+    return model.predict_proba(X[get_feature_columns(1)])
 
 
 @timed()
