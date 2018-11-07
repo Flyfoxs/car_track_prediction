@@ -57,17 +57,19 @@ def check_exception(df, index=None):
         logger.debug(df.dtypes.sort_values())
         raise error
     if len(x)>0:
-        print(x.min(), x.max()+1, y.min(), y.max()+1)
-        df = df.iloc[x.min():(x.max()+1), y.min():(y.max()+1)]
+        #print(x.min(), x.max()+1, y.min(), y.max()+1)
+        df = df.iloc[x.min():(x.max()+3), y.min():(y.max()+3)]
         error_part = df.iloc[:3, :4]
-        logger.debug(error_part)
+        logger.debug(f'check_exception:\n{error_part}')
         return error_part
     else:
         return pd.DataFrame()
 
 
-def flat_columns(df):
+def flat_columns(df, prefix=None):
     df.columns = ['_'.join(drop_empty_item(item)) for item in df.columns]
+    if prefix is not None:
+        df.columns = [f'{prefix}_{item}' for item in df.columns]
     return df
 
 def drop_empty_item(item):

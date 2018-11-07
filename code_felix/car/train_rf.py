@@ -7,12 +7,12 @@ from code_felix.car.distance_reduce import *
 from code_felix.utils_.other import replace_invalid_filename_char
 
 
-topn=0
+feature_gp=0
 
 def get_features(out_id, df):
     df = df[df.out_id == out_id]
-    global topn
-    return df[get_feature_columns(1)] , df['end_zoneid'].astype('category')
+    global feature_gp
+    return df[get_feature_columns(feature_gp)] , df['end_zoneid'].astype('category')
 
 def train_model(X, Y, **kw):
     estimate = kw['estimate'] if  'estimate' in kw else 100
@@ -29,17 +29,19 @@ def get_mode(out_id, df, **kw):
     return model
 
 def predict(model,  X):
-    global topn
-    return model.predict_proba(X[get_feature_columns(1)])
+    global feature_gp
+    X.set_index('out_id', inplace=True)
+    predict_input = X[get_feature_columns(feature_gp)]
+    check_exception(predict_input)
+    return model.predict_proba(predict_input)
 
 
-@timed()
 @file_cache(overwrite=True)
-def gen_sub(sub, threshold, top_n, **kw):
+def gen_sub(sub, threshold, gp, **kw):
     args = locals()
 
-    global topn
-    topn = top_n
+    global feature_gp
+    feature_gp = gp
 
     if sub == True:
         # Real get sub file
@@ -98,7 +100,9 @@ def gen_sub(sub, threshold, top_n, **kw):
 
     loss = cal_loss_for_df(predict_list)
     if loss:
-        logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, {len(predict_list)} samples, args:{args}")
+        logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, "
+                     f"{len(get_feature_columns(feature_gp))} feature, "
+                     f"{len(predict_list)} samples, args:{args}")
 
 
     sub_df = predict_list[['predict_lat', 'predict_lon']]
@@ -121,8 +125,8 @@ if __name__ == '__main__':
 
     for threshold in [500, 550, 450,]:
         for sub in [100, True, 'all']:
-            for topn in [1, 2, 3, 0, ]:
-                gen_sub(sub, threshold, topn, max_depth=4)
+            for feature_gp in [1, 2, 3, 0, ]:
+                gen_sub(sub, threshold, feature_gp, max_depth=4)
 
 
     # for topn in [4,5,7,0,]:

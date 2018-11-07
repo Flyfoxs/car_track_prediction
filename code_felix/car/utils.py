@@ -147,26 +147,39 @@ def get_train_with_adjust_position(threshold, train_file):
     all = cal_distance_2_centers(all, train_file, threshold, 4)
     return all
 
+@timed()
 def analysis_start_zone_id(threshold, train_file, df=None):
     train = get_train_with_adjust_position(threshold, train_file)
-    start_zoneid = train.groupby(['out_id', 'start_zoneid', ], as_index=False).agg(
+    start_zoneid = train.groupby(['out_id', 'start_zoneid', ]).agg(
         {'duration': ['min', 'max', 'mean', 'sum'],
          'distance': ['min', 'max', 'mean', 'sum'],
+         'end_sn':['min', 'max', 'mean', 'sum'],
+
          'end_zoneid': ['nunique', 'count'],
-         'start_sn': 'max'
+         'start_sn': 'max',
          })
 
-    logger.debug([item for item in start_zoneid.columns])
-    start_zoneid = flat_columns(start_zoneid)
-    logger.debug(start_zoneid.columns)
 
-    if df is None:
-        logger.debug(train.columns)
-        train_with_zoneid = pd.merge(train, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
-    else:
-        logger.debug(df.columns)
-        train_with_zoneid = pd.merge(df, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
+
+    start_zoneid = flat_columns(start_zoneid, 'sz')
+    # logger.debug(f'======={start_zoneid.columns}')
+
+    start_zoneid = start_zoneid.reset_index()
+
+    #check_exception(start_zoneid)
+
+
+
+    df = df or train
+
+    logger.debug(f"Begin to join zoneid#{len(start_zoneid)} info to DF#{len(df)}")
+    train_with_zoneid = pd.merge(df, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
+    logger.debug("End to join zoneid info to DF")
+
+    train_with_zoneid.fillna(train_with_zoneid.mean(), inplace=True)
     return train_with_zoneid
+
+
 @timed()
 def cal_distance_2_centers(add_with_zoneid, train_file, threshold, topn):
     from code_felix.car.distance_reduce import getDistance
@@ -276,20 +289,24 @@ def cal_loss_for_df(df):
         return None
 
 @lru_cache()
-def get_feature_columns(gp='1'):
+def get_feature_columns(gp='0'):
     gp = str(gp)
     feature_col = ['weekday', 'weekend',  # 'weekday',
                    # 'holiday',
                    'hour', 'start_zoneid', 'dis_center_0', #'dis_center_1','dis_center_2'
                    ]
-    if gp=='1':
+    if gp == '0':
         pass
-    if gp=='2':
-        pass
-    if gp=='3':
-        pass
+    elif gp == '1':
+        feature_col.extend(['sz_distance_min', 'sz_distance_max', 'sz_distance_mean', 'sz_distance_sum', ])
+    elif gp == '2':
+        feature_col.extend(['sz_end_zoneid_nunique', 'sz_end_zoneid_count', ])
+    elif gp == '3':
+        feature_col.append('sz_start_sn_max')
+    else:
+        logger.warning(f"Can not find gp#{gp} in fun#get_feature_columns")
 
-    logger.debug(f'The training feature gp{gp}, feature_col{feature_col}')
+    logger.debug(f'The training feature gp:{gp}, feature_col:{feature_col}')
 
     return feature_col
 
