@@ -168,15 +168,17 @@ def analysis_start_zone_id(threshold, train_file, df=None):
 
     #check_exception(start_zoneid)
 
-
-
-    df = df or train
+    df = train if df is None else df
 
     logger.debug(f"Begin to join zoneid#{len(start_zoneid)} info to DF#{len(df)}")
     train_with_zoneid = pd.merge(df, start_zoneid, on=['out_id', 'start_zoneid'], how='left')
-    logger.debug("End to join zoneid info to DF")
+    logger.debug(f"End to join zoneid info to DF{len(train_with_zoneid)}")
 
-    train_with_zoneid.fillna(train_with_zoneid.mean(), inplace=True)
+    for col in train_with_zoneid:
+        if 'sz_' in col:
+            logger.debug(f'Try to fillna for col#{col}:{train_with_zoneid[col].mean()}')
+            train_with_zoneid[col].fillna(train_with_zoneid[col].mean(), inplace=True)
+
     return train_with_zoneid
 
 
