@@ -26,6 +26,7 @@
 * Len of the holiday
 * Remain of the holiday 
 * Reduce the start_zone far from the home and low frequency
+* geohash to define the attribute of a zoneid
 
 # Classfy
 * Top 10 multiple class:DC Tree

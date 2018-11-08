@@ -87,7 +87,7 @@ def train_model_xgb(X, Y, **kw):
 
 def predict(model,  X):
     global feature_gp
-    X.set_index('out_id', inplace=True)
+    # X.set_index('out_id', inplace=True)
     predict_input = X[get_feature_columns(feature_gp)]
     check_exception(predict_input)
     if isinstance(model, xgb.core.Booster):
@@ -133,27 +133,12 @@ def gen_sub(sub, threshold, gp, model_type, **kw):
     count = 0
     for out_id in test.out_id.drop_duplicates():
         count += 1
-        classes_num = len(train[train.out_id == out_id].end_zoneid.drop_duplicates())
-        if classes_num == 1:
-            result = 0
-        else:
-            test_mini = test.loc[test.out_id == out_id]
-            #logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
-
-            model = get_mode(out_id, train, model_type=model_type, **kw)
-            result = predict(model, test_mini)
-            #logger.debug(result.shape)
-            result = np.argmax(result, axis=1)
-        #logger.debug(result)
-
-        test.loc[test.out_id == out_id, 'predict_id']  = result
-
-        predict_result = get_zone_inf(out_id, train, test)
-        sing_loss = cal_loss_for_df(predict_result)
-        logger.debug(f"{count}/{car_num} loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)} "
-                     f"for outid:{out_id}, num_cls:{classes_num}, {len(test.loc[test.out_id == out_id])} records, sub:{sub}")
+        single_test = test.loc[test.out_id == out_id].copy()
+        single_train = train.loc[train.out_id == out_id]
+        predict_result = predict_outid(kw, model_type, single_test, single_train)
 
         predict_list.append(predict_result)
+        # logger.debug(f'{count} / {car_num}, sub: {sub}')
 
     predict_list = pd.concat(predict_list)
     predict_list.set_index('r_key',inplace=True)
@@ -182,6 +167,27 @@ def gen_sub(sub, threshold, gp, model_type, **kw):
 
     return predict_list
 
+
+def predict_outid(kw, model_type,  test, train):
+    out_id = train.out_id.values[0]
+    classes_num = len(train.end_zoneid.drop_duplicates())
+    if classes_num == 1:
+        result = 0
+    else:
+        # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
+
+        model = get_mode(out_id, train, model_type=model_type, **kw)
+        result = predict(model, test)
+        # logger.debug(result.shape)
+        result = np.argmax(result, axis=1)
+    # logger.debug(result)
+    test['predict_id'] = result
+    predict_result = get_zone_inf(out_id, train, test)
+    sing_loss = cal_loss_for_df(predict_result)
+    logger.debug(f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)} "
+                 f"for outid:{out_id}, num_cls:{classes_num}, "
+                 f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records")
+    return predict_result
 
 
 if __name__ == '__main__':

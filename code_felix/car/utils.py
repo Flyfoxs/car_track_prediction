@@ -268,6 +268,7 @@ def get_zone_inf(out_id, train, test):
     mini_train = mini_train.sort_values('end_zoneid').reset_index(drop=True)
 
     predict_cols = ['predict_zone_id', 'predict_lat','predict_lon', 'predict_sn']
+    #logger.debug(test.head(1))
     mini_test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
     mini_test[predict_cols] = mini_train.loc[mini_test.predict_id].values
     # logger.debug(test.head(1))
