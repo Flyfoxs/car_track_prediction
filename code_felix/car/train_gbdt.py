@@ -99,34 +99,59 @@ def predict(model,  X):
         return model.predict_proba(predict_input)
 
 
-@file_cache(overwrite=True)
-def gen_sub(sub, threshold, gp, model_type, **kw):
+@timed()
+def gen_sub(file, threshold, gp, model_type, **kw):
     args = locals()
+    cur_train = f'{DATA_DIR}/train_{file}.csv'
+    cur_test = f'{DATA_DIR}/test_{file}.csv'
+
+    train = get_train_with_adjust_position(threshold, cur_train)
+    test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+    out_id_list = test.out_id
+
+    val = process_df(train, test, threshold, gp, model_type, **kw)
+
+    if file=='new':
+        sub_df = val[['predict_lat', 'predict_lon']]
+        sub_df.columns = ['end_lat', 'end_lon']
+        sub_df.index.name = 'r_key'
+        sub_file = replace_invalid_filename_char(f'./output/sub_{model_type}_{args}.csv')
+        sub_df.to_csv(sub_file)
+        logger.debug(f'Sub file is save to {sub_file}')
+    else:
+        loss = cal_loss_for_df(val)
+        if loss:
+            logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {len(out_id_list)} cars, "
+                         f"{len(get_feature_columns(feature_gp))} feature, "
+                         f"{len(val)} samples, args:{args}")
+
+
+        cur_train = f'{DATA_DIR}/train_new.csv'
+        cur_test = f'{DATA_DIR}/test_new.csv'
+        train = get_train_with_adjust_position(threshold, cur_train)
+        test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+
+        train = train[train.out_id.isin(out_id_list)]
+        test = test[test.out_id.isin(out_id_list)]
+
+        sub = process_df(train, test, threshold, gp, model_type, **kw)
+
+
+
+        file_ensemble = f'./output/ensemble/{"{:,.3f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
+        save_df(val, sub, file_ensemble)
+
+
+def process_df(train, test, threshold, gp, model_type, **kw):
 
     global feature_gp
     feature_gp = gp
 
-    if sub == True:
-        # Real get sub file
-        cur_train = train_file
-        cur_test = test_file
-    else:
-        # Validate file
-        train_train_file = f'{DATA_DIR}/train_val_{sub}.csv'
-        train_validate_file = f'{DATA_DIR}/test_val_{sub}.csv'
-        cur_train = train_train_file
-        cur_test = train_validate_file
+
+    # test = analysis_start_zone_id(threshold, cur_train, test)
 
 
-    train = get_train_with_adjust_position(threshold, cur_train)
-    train = analysis_start_zone_id(threshold, cur_train, train)
-
-    test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-    test = analysis_start_zone_id(threshold, cur_train, test)
-
-
-    test['predict_id'] = None
-    test['predict_zone_id'] = None
+    # test['predict_zone_id'] = None
 
     predict_list = []
     car_num = len(test.out_id.drop_duplicates())
@@ -135,10 +160,15 @@ def gen_sub(sub, threshold, gp, model_type, **kw):
         count += 1
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id]
-        predict_result = predict_outid(kw, model_type, single_test, single_train)
+
+        predict_result, message = predict_outid(kw, model_type, single_test, single_train)
+        predict_result['model_type'] = model_type
+        predict_result['threshold'] = threshold
+        predict_result['kw'] = str(kw)
+        logger.debug(f'{count}/{car_num}, {message}')
 
         predict_list.append(predict_result)
-        # logger.debug(f'{count} / {car_num}, sub: {sub}')
+        #
 
     predict_list = pd.concat(predict_list)
     predict_list.set_index('r_key',inplace=True)
@@ -148,22 +178,8 @@ def gen_sub(sub, threshold, gp, model_type, **kw):
     #Reorder predict result
     predict_list = pd.DataFrame(index=test.r_key).join(predict_list)
 
-    loss = cal_loss_for_df(predict_list)
-    if loss:
-        logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {car_num} cars, "
-                     f"{len(get_feature_columns(feature_gp))} feature, "
-                     f"{len(predict_list)} samples, args:{args}")
 
 
-    sub_df = predict_list[['predict_lat', 'predict_lon']]
-    sub_df.columns= ['end_lat','end_lon']
-    sub_df.index.name = 'r_key'
-    file_ensemble = f'./output/{threshold}/ensemble_rf_{args}.h5'
-    save_df(predict_list, file_ensemble)
-    if sub==True or loss is None:
-        sub_file = replace_invalid_filename_char(f'./output/result_rf_{args}.csv')
-        sub_df.to_csv(sub_file)
-        logger.debug(f'Sub file is save to {sub_file}')
 
     return predict_list
 
@@ -184,10 +200,10 @@ def predict_outid(kw, model_type,  test, train):
     test['predict_id'] = result
     predict_result = get_zone_inf(out_id, train, test)
     sing_loss = cal_loss_for_df(predict_result)
-    logger.debug(f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)} "
-                 f"for outid:{out_id}, num_cls:{classes_num}, "
-                 f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records")
-    return predict_result
+    message = f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)}  " \
+              f"outid:{out_id}, cls:{classes_num}, "\
+              f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records"
+    return predict_result, message
 
 
 if __name__ == '__main__':

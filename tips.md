@@ -7,7 +7,7 @@
 ## Train: 1448321, 8
 * Car:5819
 
-## Test: 47493, 5
+## Test: 47493, 5 (5817=>5033)
 * Car:5734 Overlap car with traing:5734
 * Avg 1 car has 10 records
 

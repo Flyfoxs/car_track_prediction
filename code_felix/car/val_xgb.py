@@ -9,7 +9,7 @@ if __name__ == '__main__':
 
 
     for num_round in [8, 10]:
-        for file in ['all']:
+        for file in [100,  'all_2']:
             gen_sub(file, 500, 0, 'xgb', max_depth=4, num_round=num_round)
 
     # for num_round in [8, 10]:

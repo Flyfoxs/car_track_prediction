@@ -227,6 +227,11 @@ def get_centers_add(train_file, threshold, topn):
 def get_test_with_adjust_position(threshold, train_file, test_file):
 
     test = get_time_extend(test_file)
+
+    real_out_id_list = get_score_outid()
+    logger.debug(f'There are {len(real_out_id_list)} outid in submission test file')
+    test = test[test.out_id.isin(real_out_id_list)]
+
     if 'end_time' in test:
         del test['end_time']
 
@@ -314,6 +319,8 @@ def get_feature_columns(gp='0'):
     return feature_col
 
 
+def get_score_outid():
+    return get_time_extend('./input/test_new.csv').out_id.drop_duplicates()
 
 # def clean_train_useless(df):
 #     df['last_time'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['start_time'].transform('max')
