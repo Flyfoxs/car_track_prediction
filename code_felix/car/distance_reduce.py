@@ -1,4 +1,5 @@
 from code_felix.car.utils import *
+
 from code_felix.utils_.util_log import *
 from code_felix.utils_.util_date import *
 from code_felix.utils_.util_cache_file import *
@@ -14,6 +15,7 @@ def cal_distance_gap_and_zoneid(train, test, threshold):
     return address_with_zoneid
 
 def sort_address_and_cal_gap(train, test):
+    from code_felix.car.utils import train_dict, test_dict
     train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
     test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
@@ -217,6 +219,7 @@ def pickup_stable_zoneid(adress_with_zoneid):
 
 
 def getDistance(latA, lonA, latB, lonB):
+    from math import radians, atan, tan, sin, acos, cos
     ra = 6378140  # radius of equator: meter
     rb = 6356755  # radius of polar: meter
     flatten = (ra - rb) / ra  # Partial rate of the earth

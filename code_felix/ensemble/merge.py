@@ -1,0 +1,61 @@
+from code_felix.car.utils import *
+import os.path
+
+def get_file_name(file_list):
+    file_list = [ item.split('_')[0].replace('0.','') for item in file_list]
+    file_list = sorted(file_list)
+    file = '_'.join(file_list)
+    return f'./output/merge_{file}.csv'
+
+if __name__ == '__main__':
+    rootdir = './output/ensemble/'
+    list = os.listdir(rootdir)
+    path_list = sorted(list, reverse=True)
+    import re
+    pattern = re.compile(r'.*440_rf')
+    path_list = [os.path.join(rootdir, item) for item in path_list if pattern.match(item)]
+
+    val_list = []
+    sub_list = {}
+    i = 0
+    for file in path_list:
+        i += 1
+        vali = pd.read_hdf(file, 'val')
+        vali = vali.groupby('out_id').final_loss.mean()
+        vali.name = file
+        vali.to_frame()
+        # print(vali.shape)
+        val_list.append(vali)
+
+    val_all = pd.concat(val_list, axis=1)
+
+    # val_all['file_min'] = val_all.apply(lambda val: val.idxmin(axis=1) , axis=1)
+    #file_max = val_all.idxmax(axis=1)
+    #val_all['file_max'] = file_max
+    val_all['file_min'] = val_all.idxmin(axis=1)
+    val_all['min_'] = val_all.min(axis=1)
+    val_all['max_'] = val_all.max(axis=1)
+    val_all.index.name = 'out_id'
+    val_all = val_all.reset_index()
+
+    sub_list = []
+    file_list = []
+    gp = val_all.groupby('file_min')
+    for file, item in gp:
+        logger.debug(f'{len(item)}:{file}')
+        temp_sub = pd.read_hdf(file, 'sub')
+        sub = temp_sub[temp_sub.out_id.isin(item.out_id)]
+        file_name = os.path.basename(file)
+        file_list.append(file_name)
+        sub_list.append(sub)
+
+    sub_df = pd.concat(sub_list)[['predict_lat', 'predict_lon']]
+    sub_df.columns = ['end_lat', 'end_lon']
+    sub_df.index.name = 'r_key'
+    test = get_time_extend('./input/test_new.csv')
+    sub_df = pd.DataFrame(index=test.r_key).join(sub_df)
+
+    file_name = get_file_name(file_list)
+    logger.debug(file_name)
+    sub_df.to_csv(file_name)
+

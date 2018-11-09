@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+from code_felix.car.distance_reduce import getDistance
 from code_felix.car.holiday import get_holiday
 from code_felix.utils_.util_log import *
 
@@ -11,7 +12,7 @@ from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_cache_file import *
 from code_felix.utils_.util_pandas import *
 
-from math import radians, atan, tan, sin, acos, cos
+
 from functools import lru_cache
 
 DATA_DIR = './input'
@@ -228,11 +229,12 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
 
     test = get_time_extend(test_file)
 
-    real_out_id_list = get_score_outid()
+    real_out_id_list = get_score_outid().out_id
     logger.debug(f'There are {len(real_out_id_list)} outid in submission test file')
     test = test[test.out_id.isin(real_out_id_list)]
 
     if 'end_time' in test:
+        test['distance'] = test.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
         del test['end_time']
 
     all = adjust_position_2_center(threshold, test, train_file)
@@ -320,7 +322,10 @@ def get_feature_columns(gp='0'):
 
 
 def get_score_outid():
-    return get_time_extend('./input/test_new.csv').out_id.drop_duplicates()
+    df = get_time_extend('./input/test_new.csv').groupby('out_id').out_id.count()
+    df.name = 'count'
+    df = df.to_frame().reset_index()
+    return df.sort_values('count', ascending=False)
 
 # def clean_train_useless(df):
 #     df['last_time'] = df.groupby(['out_id', 'start_zoneid', 'end_zoneid'])['start_time'].transform('max')

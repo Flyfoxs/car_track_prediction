@@ -4,6 +4,7 @@ from collections import defaultdict
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
+from code_felix.car.distance_reduce import getDistance
 from code_felix.utils_.other import replace_invalid_filename_char
 from code_felix.utils_.util_log import *
 import matplotlib as plt
@@ -82,6 +83,9 @@ def save_df(val, sub, path):
     if not os.path.exists(os.path.dirname(path)):
         os.mkdir(os.path.dirname(path))
 
+    if 'distance' not in val:
+        val['distance'] = val.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon),
+                                      axis=1)
 
     val.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
                  ], axis=1, inplace=True, errors='ignore')
