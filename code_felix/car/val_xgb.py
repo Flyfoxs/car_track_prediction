@@ -8,9 +8,14 @@ if __name__ == '__main__':
 
 
 
-    for num_round in [8, 10]:
-        for file in [100,  'all_2']:
-            gen_sub(file, 500, 0, 'xgb', max_depth=4, num_round=num_round)
+    for num_round in [10, 100]:
+        for file in ['worse']:
+            gen_sub(file, 2000, 0, 'xgb', max_depth=4, num_round=num_round)
+
+    #
+    # for num_round in [8, 10]:
+    #     for file in [100,  'all_2']:
+    #         gen_sub(file, 500, 0, 'xgb', max_depth=4, num_round=num_round)
 
     # for num_round in [8, 10]:
     #     gen_sub(True, 500, 0, 'xgb', max_depth=4, num_round=num_round)

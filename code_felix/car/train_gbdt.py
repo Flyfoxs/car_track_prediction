@@ -107,7 +107,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 
     train = get_train_with_adjust_position(threshold, cur_train)
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
-    out_id_list = test.out_id
+    out_id_list = test.out_id.drop_duplicates()
 
     val = process_df(train, test, threshold, gp, model_type, **kw)
 

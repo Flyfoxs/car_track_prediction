@@ -1,18 +1,18 @@
 from code_felix.car.utils import *
 import os.path
 
-def get_file_name(file_list):
+def get_file_name(file_list, comments=''):
     file_list = [ item.split('_')[0].replace('0.','') for item in file_list]
     file_list = sorted(file_list)
     file = '_'.join(file_list)
-    return f'./output/merge_{file}.csv'
+    return f'./output/merge_{comments}_{file}.csv'
 
 if __name__ == '__main__':
     rootdir = './output/ensemble/'
     list = os.listdir(rootdir)
     path_list = sorted(list, reverse=True)
     import re
-    pattern = re.compile(r'.*440_rf')
+    pattern = re.compile(r'.*h5$')
     path_list = [os.path.join(rootdir, item) for item in path_list if pattern.match(item)]
 
     val_list = []
@@ -38,11 +38,13 @@ if __name__ == '__main__':
     val_all.index.name = 'out_id'
     val_all = val_all.reset_index()
 
+    new_loss = round(val_all.min_.mean(),4)
+
     sub_list = []
     file_list = []
     gp = val_all.groupby('file_min')
     for file, item in gp:
-        logger.debug(f'{len(item)}:{file}')
+        logger.debug(f'{str(len(item)).rjust(4,"0")}:{file}')
         temp_sub = pd.read_hdf(file, 'sub')
         sub = temp_sub[temp_sub.out_id.isin(item.out_id)]
         file_name = os.path.basename(file)
@@ -55,7 +57,7 @@ if __name__ == '__main__':
     test = get_time_extend('./input/test_new.csv')
     sub_df = pd.DataFrame(index=test.r_key).join(sub_df)
 
-    file_name = get_file_name(file_list)
+    file_name = get_file_name(file_list, new_loss)
     logger.debug(file_name)
     sub_df.to_csv(file_name)
 
