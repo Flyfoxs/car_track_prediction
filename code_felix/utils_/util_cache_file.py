@@ -9,7 +9,7 @@ from code_felix.utils_.util_log import *
 class Cache_File:
     def __init__(self):
         self.cache_path='./cache/'
-        self.enable=True
+        self.enable=False
         self.date_list = ['start','close','start_base','weekbegin', 'tol_day_cnt_min',	'tol_day_cnt_max']
         if not os.path.exists(self.cache_path):
             os.mkdir(self.cache_path)
@@ -45,6 +45,9 @@ class Cache_File:
 
 
     def writeFile(self, key, val, type):
+        if not self.enable :
+            logger.debug('Cache is disable')
+            return None
         if isinstance(val, pd.DataFrame ) and len(val)>0:
             path = self.get_path(key, type)
             logger.debug( f"====Write {len(val)} records to File#{path}" )

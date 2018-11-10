@@ -8,16 +8,21 @@ from functools import partial
 
 test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
+min_gap =300
+max_gap =5000
+
+
+
 @file_cache()
 def cal_distance_gap_and_zoneid(train, test, threshold):
     sorted_address = sort_address_and_cal_gap(train, test)
     address_with_zoneid = cal_zoneid_base_on_gap(sorted_address, threshold)
     return address_with_zoneid
 
-def sort_address_and_cal_gap(train, test):
+def sort_address_and_cal_gap(train_file, test_file):
     from code_felix.car.utils import train_dict, test_dict
-    train = pd.read_csv(train, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
-    test = pd.read_csv(test, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
+    train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
+    test = pd.read_csv(test_file, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
     df_list = [train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
@@ -47,11 +52,14 @@ def sort_address_and_cal_gap(train, test):
     #     place_list['lon_2'] - place_list['lon'])
     place_list['distance_gap'] = round(
         place_list.apply(lambda val: getDistance(val.lat_2, val.lon_2, val.lat, val.lon), axis=1))
+
+    from code_felix.car.utils import fill_out_id_attr
+    place_list = fill_out_id_attr(train_file, place_list)
     return place_list
 
 @timed()
 def cal_zoneid_base_on_gap(df, distance_threshold):
-    gp = df.groupby('out_id')
+    gp = df.groupby(['out_id'])
     gp_list = []
     for index, df in gp:
         gp_list.append(df)
@@ -69,6 +77,15 @@ def cal_zoneid_base_on_gap(df, distance_threshold):
 def cal_mini_df(mini, distance_threshold):
     mini['zoneid'] = None
     mini = mini.reset_index(drop=True)
+    #logger.debug(mini.columns)
+    if distance_threshold is None or distance_threshold < 100:
+        distance_mean = mini.distance_mean.values[0]
+        distance_threshold = distance_mean // distance_threshold
+
+        distance_threshold = max(min_gap,distance_threshold)
+        distance_threshold = min(max_gap,distance_threshold)
+
+
     for index, item in mini.iterrows():
         if index == 0:
             mini.loc[index, 'zoneid'] = 100
@@ -118,7 +135,7 @@ def reduce_address(threshold, train_file):
     test_file = train_file.replace('train_', 'test_')
 
     #Cal center of zoneid base on lat
-    dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, min(100, threshold))
+    dis_with_zoneid =  cal_distance_gap_and_zoneid(train_file, test_file, threshold)
 
     # Cal posiztion of center on lat
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
@@ -270,7 +287,6 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
     out_id_split_list = []
     for out_id in out_id_list:
         out_id_mini = mini.loc[mini.out_id==out_id,:]
-        logger.debug(f'{len(out_id_mini)} zoneid need to reduce for out_id:{out_id} with threshold:{threshold}')
         out_id_mini = out_id_mini.sort_values([ 'center_lon', 'center_lat'])
         out_id_mini = out_id_mini.reset_index(drop=True)
 
@@ -290,7 +306,14 @@ def get_center_address_need_reduce(dis_with_zoneid,threshold):
 
 
 def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
+    if threshold is None or threshold < 100:
+        distance_mean = out_id_mini.distance_mean.values[0]
+        threshold = distance_mean // threshold
+        threshold = max(min_gap,threshold)
+        threshold = min(max_gap,threshold)
     logger.debug(f'centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
+
+
     lon_threshold = 0.00001 * threshold * 2
     df = pd.DataFrame(columns=['out_id', 'zoneid', 'zoneid_new', 'cur_dis',])
     zoneid_replaced = []

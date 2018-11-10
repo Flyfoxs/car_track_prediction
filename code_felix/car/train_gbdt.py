@@ -158,7 +158,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         count += 1
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id]
-
+        #logger.debug(out_id)
         predict_result, message = predict_outid(kw, model_type, single_test, single_train)
         predict_result['model_type'] = model_type
         predict_result['threshold'] = threshold
@@ -183,6 +183,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 
 
 def predict_outid(kw, model_type,  test, train):
+    #logger.debug(len(train))
     out_id = train.out_id.values[0]
     classes_num = len(train.end_zoneid.drop_duplicates())
     if classes_num == 1:

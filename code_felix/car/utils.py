@@ -80,7 +80,7 @@ def fill_end_zone_attr(df=None):
         return end_zoneid
 
 
-#@file_cache()
+@timed()
 def get_time_extend(file):
 
     try:
