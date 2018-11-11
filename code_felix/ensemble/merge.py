@@ -12,7 +12,7 @@ if __name__ == '__main__':
     list = os.listdir(rootdir)
     path_list = sorted(list, reverse=True)
     import re
-    pattern = re.compile(r'.*h5$')
+    pattern = re.compile(r'.*rf.*h5$')
     path_list = [os.path.join(rootdir, item) for item in path_list if pattern.match(item)]
 
     val_list = []

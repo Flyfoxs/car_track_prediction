@@ -9,7 +9,7 @@ from code_felix.utils_.util_log import *
 class Cache_File:
     def __init__(self):
         self.cache_path='./cache/'
-        self.enable=False
+        self.enable=True
         self.date_list = ['start','close','start_base','weekbegin', 'tol_day_cnt_min',	'tol_day_cnt_max']
         if not os.path.exists(self.cache_path):
             os.mkdir(self.cache_path)

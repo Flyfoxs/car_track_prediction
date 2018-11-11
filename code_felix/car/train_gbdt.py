@@ -136,7 +136,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 
         sub = process_df(train, test, threshold, gp, model_type, **kw)
 
-        file_ensemble = f'./output/ensemble/{"{:,.3f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
+        file_ensemble = f'./output/ensemble/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
         save_df(val, sub, file_ensemble)
 
 

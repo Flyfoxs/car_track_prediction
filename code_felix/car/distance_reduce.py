@@ -8,7 +8,7 @@ from functools import partial
 
 test_columns = ['r_key','out_id','start_time','start_lat','start_lon']
 
-min_gap =300
+min_gap =500
 max_gap =5000
 
 

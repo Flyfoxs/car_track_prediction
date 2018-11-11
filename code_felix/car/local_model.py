@@ -5,11 +5,11 @@ from code_felix.car.utils import *
 from code_felix.car.utils import get_train_with_adjust_position, get_test_with_adjust_position
 
 
-for threshold in [30, 40, 50, 60,70,80,90,  500]:
+for threshold in [ 50, 30, 40,60,70,80,90,  500]:
     for gp in [ 0]:
         for model in ['rf']:
             for deep in [4]:
-                        file=100
+                        file='all_2'
                         #threshold=500
                         cur_train = f'{DATA_DIR}/train_{file}.csv'
                         cur_test = f'{DATA_DIR}/test_{file}.csv'
