@@ -10,10 +10,18 @@ def get_file_name(file_list, comments=''):
 if __name__ == '__main__':
     rootdir = './output/ensemble/'
     list = os.listdir(rootdir)
-    path_list = sorted(list, reverse=True)
-    import re
-    pattern = re.compile(r'.*rf.*h5$')
-    path_list = [os.path.join(rootdir, item) for item in path_list if pattern.match(item)]
+    # path_list = sorted(list, reverse=True)
+    # import re
+    # pattern = re.compile(r'.*43959.*h5$')
+
+    path_list =[
+        '0.43957_rf_70_kwmax_depth4num_round100model_typerfgp0threshold70fileall_2.h5',
+        '0.43959_rf_40_kwmax_depth4num_round100model_typerfgp0threshold40fileall_2.h5',
+        '0.43960_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500fileall_2.h5',
+       #Bad '0.790_rf_2000_kwmax_depth4num_round100model_typerfgp0threshold2000fileworse.h5',
+    ]
+
+    path_list = [os.path.join(rootdir, item) for item in path_list]
 
     val_list = []
     sub_list = {}
