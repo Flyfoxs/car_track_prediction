@@ -29,11 +29,20 @@
 * geohash to define the attribute of a zoneid
 * Long distance times, 
 * center#1 to center#2 distance
+* group out_id(zoneid count, distance count)
+
+* Continue reduce for car_id with multiply addressid
+* Time avg distance
+* Day avg distance
+* Start_zoneid avg distance
+* reduce to until only n address for one out_id
+* Kmeans reduce address to diff group
 
 # Classfy
 * Top 10 multiple class:DC Tree
 * Top 10 KNN
-* 
+
+
 
 [LightGBM] [Warning] Accuracy may be bad since you didn't set num_leaves and 2^max_depth > num_leaves.
 

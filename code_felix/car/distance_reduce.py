@@ -1,3 +1,5 @@
+from sklearn.cluster import KMeans
+
 from code_felix.car.utils import *
 
 from code_felix.utils_.util_log import *
@@ -19,6 +21,7 @@ def cal_distance_gap_and_zoneid(train, test, threshold):
     address_with_zoneid = cal_zoneid_base_on_gap(sorted_address, threshold)
     return address_with_zoneid
 
+@timed()
 def sort_address_and_cal_gap(train_file, test_file):
     from code_felix.car.utils import train_dict, test_dict
     train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
@@ -129,6 +132,71 @@ def get_center_address(threshold, train, test):
     mini = df.drop_duplicates(['out_id', 'zoneid', 'center_lat', 'center_lon',])
     return mini
 
+def reduce_address_knn(dis_with_zoneid, threshold=2):
+    outid_zoneid_count = dis_with_zoneid.groupby('out_id')['zoneid'].nunique()
+    outid_zoneid_count = outid_zoneid_count[outid_zoneid_count>=50]
+
+    total = len(outid_zoneid_count)
+    i =0
+    for out_id, count in outid_zoneid_count.iteritems():
+        i += 1
+        from sklearn import neighbors
+        logger.debug(f'Try to reduce {count} address by knn : for {out_id}  {i}/{total}')
+        n_neighbors = 1
+        weights = 'distance'
+        clf = neighbors.KNeighborsClassifier(n_neighbors, weights=weights)
+
+        mini = dis_with_zoneid.loc[dis_with_zoneid.out_id==out_id]
+        old_len = len(mini.zoneid.drop_duplicates())
+
+        gp_mini = mini.drop_duplicates('zoneid')
+        gp_mini = gp_mini.groupby('zoneid')['in_out'].sum().sort_values(ascending=False)
+
+        train = mini[mini.zoneid.isin(gp_mini[gp_mini >= threshold].index)]
+        test = mini[mini.zoneid.isin(gp_mini[gp_mini < threshold].index)]
+        logger.debug(f'train.shape:{train.shape}, test.shape:{test.shape}')
+
+        X = train[['lat', 'lon']].values
+        Y = train.zoneid.astype(int).values
+
+        clf.fit(X, Y)
+
+        zoneid_predict = clf.predict(test[['lat', 'lon']].values)
+
+        dis_with_zoneid.loc[test.index, 'zoneid'] = zoneid_predict
+
+        new_len = len(dis_with_zoneid.loc[dis_with_zoneid.out_id==out_id]['zoneid'].drop_duplicates())
+
+        logger.debug(f'zoneid from reduce from{old_len} to{new_len} for outid:{out_id}')
+
+    dis_with_zoneid = cal_center_of_zoneid(dis_with_zoneid)
+    return dis_with_zoneid
+
+
+def reduce_address_kmeans(dis_with_zoneid, num_center):
+    #
+    outid_zoneid_count = dis_with_zoneid.groupby('out_id')['zoneid'].nunique()
+    outid_zoneid_count = outid_zoneid_count[outid_zoneid_count>=num_center]
+
+    total = len(outid_zoneid_count)
+    i =0
+    for out_id in outid_zoneid_count.index:
+        i += 1
+        logger.debug(f'Try to reduce address to:{num_center} for {out_id}  {i}/{total}')
+        X = dis_with_zoneid.loc[dis_with_zoneid.out_id == out_id][['lat','lon']]
+        kmeans = KMeans(n_clusters=num_center, random_state=777).fit(X)
+        center = kmeans.cluster_centers_
+        y_pred = kmeans.predict(X)
+        dis_with_zoneid.loc[dis_with_zoneid.out_id == out_id, 'zoneid']  = y_pred
+        dis_with_zoneid.loc[dis_with_zoneid.out_id == out_id, 'center_lat'] = center[y_pred][:,0]
+        dis_with_zoneid.loc[dis_with_zoneid.out_id == out_id, 'center_lon'] = center[y_pred][:, 1]
+
+    return dis_with_zoneid
+
+
+
+
+
 @file_cache(overwrite=False)
 def reduce_address(threshold, train_file):
 
@@ -139,7 +207,7 @@ def reduce_address(threshold, train_file):
 
     # Cal posiztion of center on lat
     dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
-    dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
+    #dis_with_zoneid = adjust_add_with_centers(dis_with_zoneid, threshold)
 
     freq = count_in_out_4_zone_id(dis_with_zoneid, train_file)
     # freq = freq[['out_id', 'zoneid', 'sn']].drop_duplicates()
@@ -155,7 +223,9 @@ def reduce_address(threshold, train_file):
              'in_total', 'out_total', 'in_out_total'	,
              'in_per',	'out_per',	'in_out_per' ,
                                        ]]
+    # dis_with_zoneid = reduce_address_kmeans(dis_with_zoneid, top)
 
+    #dis_with_zoneid  = reduce_address_knn(dis_with_zoneid,2)
     return dis_with_zoneid
 
 def reorder_zoneid_frequency(dis_with_zone_id, train_file):
@@ -369,7 +439,7 @@ if __name__ == '__main__':
     for threshold in [300,  500, 600,220,400, ]:
         for file in ['train_new.csv', 'train_val_all.csv', ]:
             file = f'./input/{file}'
-            reduce_address(threshold,file)
+            # reduce_address(threshold,file)
     # logger.debug(df.shape)
     # addressid = df[['out_id', 'zoneid']].drop_duplicates()
     # logger.debug(f"Only keep {len(addressid)} address with threshold#{threshold}")

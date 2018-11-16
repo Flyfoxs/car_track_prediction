@@ -17,12 +17,11 @@ train = pd.read_csv('./input/del/train_new.csv', delimiter=',', dtype=train_dict
 if num_sample is None:
     outid_list = train.out_id.drop_duplicates()
     outid_list = outid_list[outid_list.isin(get_score_outid().out_id)]
-    num_sample = 'all_2'
-if num_sample =='worse':
+    num_sample = 'all_3'
+elif num_sample =='worse2':
     # outid_list = train.out_id.drop_duplicates()
     outid_list =  get_worse_case(0.7, 5).out_id
     #num_sample = 'worse'
-
 else:
     outid_list = train.out_id.drop_duplicates()
 
@@ -46,7 +45,8 @@ for out_id in outid_list:
     if i%100==0:
         logger.debug(f'{out_id}, {i}, {len(outid_list)}')
     mini = train.loc[train.out_id==out_id]
-    validate_list.append(mini.head(10))
+    count_val = len(mini)//5
+    validate_list.append(mini.head(count_val))
 
 validate = pd.concat(validate_list)
 

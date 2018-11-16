@@ -1,4 +1,4 @@
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 import xgboost as xgb
 import lightgbm as lgb
 from code_felix.car.utils import *
@@ -37,7 +37,7 @@ def train_model_lgb(X, Y, **kw):
     #logger.debug(clf.feature_importances_)
     return bst
 def train_model_rf(X, Y, **kw):
-    clf = RandomForestClassifier(max_depth=4, n_estimators = kw['num_round'], random_state=0)
+    clf = RandomForestClassifier(max_depth=kw['max_depth'], n_estimators = kw['num_round'], random_state=0)
     #Y = Y.astype('category')
     clf = clf.fit(X, Y.cat.codes)
     #logger.debug(clf.feature_importances_)
@@ -95,8 +95,10 @@ def predict(model,  X):
     elif isinstance(model, lgb.basic.Booster):
         #logger.debug(f'Xgboost:{type(model)}')
         return model.predict(predict_input)
-    elif isinstance(model, RandomForestClassifier):
+    elif isinstance(model, RandomForestClassifier) or isinstance(model, ExtraTreesClassifier):
         return model.predict_proba(predict_input)
+    else:
+        raise Exception(f'Unknown model:{model}')
 
 
 @timed()
@@ -140,6 +142,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
         save_df(val, sub, file_ensemble)
 
 
+@timed()
 def process_df(train, test, threshold, gp, model_type, **kw):
 
     global feature_gp
@@ -193,7 +196,8 @@ def predict_outid(kw, model_type,  test, train):
 
         model = get_mode(out_id, train, model_type=model_type, **kw)
         result = predict(model, test)
-        # logger.debug(result.shape)
+        #logger.debug(result.shape)
+        #logger.debug(result[:10])
         result = np.argmax(result, axis=1)
     # logger.debug(result)
     test['predict_id'] = result
@@ -203,6 +207,18 @@ def predict_outid(kw, model_type,  test, train):
               f"outid:{out_id}, cls:{classes_num}, "\
               f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records"
     return predict_result, message
+
+def filter_train(df, topn=50):
+    out_id = df.out_id.values[0]
+    end_count = df.groupby('end_zoneid')['end_zoneid'].count()
+
+    end_count = end_count.sort_values(ascending=False)
+    end_count_new = end_count.head(topn)
+    logger.debug(f'Reduce the out:{out_id} end_zoneid from {len(end_count)} to  {len(end_count_new)}' )
+    df = df[df.end_zoneid.isin(end_count_new.index)]
+    return df
+
+
 
 
 if __name__ == '__main__':

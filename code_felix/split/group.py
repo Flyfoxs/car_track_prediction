@@ -65,3 +65,44 @@ def get_worse_case(score=0.6, count=5):
     val_all.sort_values(['min_', 'count'], ascending=False, inplace=True)
 
     return val_all[(val_all.min_ >= score) & (val_all['count'] >= count)]
+
+
+def split_2_group():
+    train = get_train_with_adjust_position(500, './input/train_new.csv')
+    gp_train = train.groupby('out_id')['end_zoneid'].nunique().to_frame().reset_index()
+    #gp_train['group'] = pd.cut(gp_train.end_zoneid.astype('int'), [0, 40, 50, 80, 100, 500])
+    gp_train['group'] = pd.qcut(gp_train.end_zoneid.astype('int'), 5)
+    gp_train['group_sn'] = gp_train['group'].cat.codes
+    gp_train.head()
+    return  gp_train
+
+def split_2_file():
+    train = pd.read_csv('./input/del/train_new.csv', delimiter=',', dtype=train_dict)
+    gp = split_2_group()
+    for gp_name, outid_list  in gp.groupby('group_sn'):
+        gp_count = len(outid_list)
+        validate_list = []
+        i = 0
+        for out_id in outid_list.out_id:
+            i += 1
+            if i % 100 == 0:
+                logger.debug(f'{out_id}, {i}, {len(outid_list)}')
+            mini = train.loc[train.out_id == out_id]
+            count_val = len(mini) // 5
+            validate_list.append(mini.head(count_val))
+
+        validate = pd.concat(validate_list)
+
+        train_train_file = f'{DATA_DIR}/train_{gp_name}gp={gp_count}.csv'
+        train_validate_file = f'{DATA_DIR}/test_{gp_name}gp={gp_count}.csv'
+
+        validate.to_csv(train_validate_file, index=None)
+        # logger.debug(len(validate), len(validate.out_id.drop_duplicates()))
+
+        logger.debug(gp_count)
+        train_train = train[(~train.index.isin(validate.index))
+                            & (train.out_id.isin(outid_list.out_id))]
+        train_train.to_csv(train_train_file, index=None)
+
+if __name__ == '__main__':
+    split_2_file()
