@@ -208,18 +208,11 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         logger.debug(f'{count}/{car_num}, {message}')
 
         predict_list.append(predict_result)
-        #
 
     predict_list = pd.concat(predict_list)
     predict_list.set_index('r_key',inplace=True)
 
-    #logger.debug(predict_list.head())
-
-    #Reorder predict result
     predict_list = pd.DataFrame(index=test.r_key).join(predict_list)
-
-
-
 
     return predict_list
 
@@ -240,20 +233,27 @@ def predict_outid(kw, model_type,  test, train):
     #logger.debug(len(train))
     out_id = train.out_id.values[0]
     classes_num = len(train.end_zoneid.drop_duplicates())
+
+    col_name = train.end_zoneid.astype('category').cat.categories
     if classes_num == 1:
-        result = 0
+        result_propability = np.ones((1,len(test)))
     else:
         # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
 
         # train, test = scale_df(train, test)
         model = get_mode(out_id, train, model_type=model_type, **kw)
-        result = predict(model, test)
-        #logger.debug(result.shape)
-        #logger.debug(result[:10])
-        result = np.argmax(result, axis=1)
-    # logger.debug(result)
-    test['predict_id'] = result
+        result_propability = predict(model, test)
+
+    result  = pd.DataFrame(result_propability, columns=col_name, index=test.r_key)
+    logger.debug(result.shape)
+    # logger.debug(result[:10])
+    result = result.idxmax(axis=1)
+
+
+    logger.debug(result.values)
+    test['predict_zone_id'] = result.values
+    logger.debug(test.predict_zone_id)
     predict_result = get_zone_inf(out_id, train, test)
     sing_loss = cal_loss_for_df(predict_result)
     message = f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)}  " \
