@@ -301,18 +301,31 @@ def cal_loss_for_df(df):
 @lru_cache()
 def get_feature_columns(gp='0'):
     gp = str(gp)
+    logger.debug(f'gp_column:{gp}')
     feature_col = ['weekday', 'weekend',  # 'weekday',
                    # 'holiday',
-                   'hour', 'start_zoneid', 'dis_center_0', #'dis_center_1','dis_center_2'
+                   'start_lat', 'start_lon',
+                   'hour',
+                   #'start_zoneid',
+                   'dis_center_0', #'dis_center_1','dis_center_2'
                    ]
     if gp == '0':
         pass
+    elif gp == 'zoneid':
+        feature_col.extend(['start_zoneid' ])
     elif gp == '1':
         feature_col.extend(['sz_distance_min', 'sz_distance_max', 'sz_distance_mean', 'sz_distance_sum', ])
     elif gp == '2':
         feature_col.extend(['sz_end_zoneid_nunique', 'sz_end_zoneid_count', ])
     elif gp == '3':
         feature_col.append('sz_start_sn_max')
+    elif gp == 'knn':
+        feature_col = ['weekday',
+                       'weekend',
+                       # 'weekday',
+                       #'holiday',
+                       'hour', 'start_lat', 'start_lon', 'dis_center_0',   'dis_center_1', 'dis_center_2'
+                       ]
     else:
         logger.warning(f"Can not find gp#{gp} in fun#get_feature_columns")
 

@@ -1,6 +1,11 @@
+from sklearn import neighbors
+
 from sklearn.ensemble import RandomForestClassifier, ExtraTreesClassifier
 import xgboost as xgb
 import lightgbm as lgb
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+
 from code_felix.car.utils import *
 from code_felix.car.distance_reduce import *
 #'start_base', 'distance','distance_min', 'distance_max', 'distance_mean',
@@ -10,9 +15,20 @@ from code_felix.utils_.other import replace_invalid_filename_char, get_gpu_paras
 feature_gp=0
 
 def get_features(out_id, df):
-    df = df[df.out_id == out_id]
+    if out_id is not None:
+        df = df[df.out_id == out_id]
     global feature_gp
-    return df[get_feature_columns(feature_gp)] , df['end_zoneid'].astype('category')
+
+    feature = df[get_feature_columns(feature_gp)]
+    if 'start_lat' in feature:
+        feature.start_lat = feature.start_lat.astype(float)
+        feature.start_lon = feature.start_lon.astype(float)
+
+    #logger.debug(f'feature_gp:{feature_gp}')
+    if 'end_zoneid' in df:
+        return  feature, df['end_zoneid'].astype('category')
+    else:
+        return feature, None
 
 def train_model_lgb(X, Y, **kw):
     num_round = kw['num_round']
@@ -45,6 +61,10 @@ def train_model_rf(X, Y, **kw):
 
 
 def get_mode(out_id, df, model_type='lgb', **kw):
+    if model_type == 'knn':
+        global feature_gp
+        feature_gp = 'knn'
+
     X, Y = get_features(out_id, df)
     if model_type == 'lgb':
         model = train_model_lgb(X, Y, **kw)
@@ -52,6 +72,8 @@ def get_mode(out_id, df, model_type='lgb', **kw):
         model = train_model_rf(X, Y, **kw)
     elif model_type == 'xgb':
         model = train_model_xgb(X, Y, **kw)
+    elif model_type == 'knn':
+        model = train_model_knn(X, Y, **kw)
     else:
         logger.error(f'Can not find model for {model_type}')
         exit(-1)
@@ -85,17 +107,31 @@ def train_model_xgb(X, Y, **kw):
     #logger.debug(clf.feature_importances_)
     return bst
 
+
+def train_model_knn(X, Y, **kw):
+    n_neighbors= kw['n_neighbors'] if 'n_neighbors' in kw else 19 #15
+    weights= kw['weights'] if 'weights' in kw else None #'distance'
+    p=kw['p'] if 'p' in kw else 5
+    clf = neighbors.KNeighborsClassifier(n_neighbors, weights=weights, p=p)
+    clf.fit(X, Y)
+
+
+    return clf
+
 def predict(model,  X):
-    global feature_gp
+    #global feature_gp
     # X.set_index('out_id', inplace=True)
-    predict_input = X[get_feature_columns(feature_gp)]
+    predict_input, _ = get_features(None, X)
+
     check_exception(predict_input)
     if isinstance(model, xgb.core.Booster):
         return model.predict(xgb.DMatrix(predict_input))
     elif isinstance(model, lgb.basic.Booster):
         #logger.debug(f'Xgboost:{type(model)}')
         return model.predict(predict_input)
-    elif isinstance(model, RandomForestClassifier) or isinstance(model, ExtraTreesClassifier):
+    elif isinstance(model, RandomForestClassifier) \
+            or isinstance(model, ExtraTreesClassifier)\
+            or isinstance(model, KNeighborsClassifier)  :
         return model.predict_proba(predict_input)
     else:
         raise Exception(f'Unknown model:{model}')
@@ -146,7 +182,10 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 def process_df(train, test, threshold, gp, model_type, **kw):
 
     global feature_gp
-    feature_gp = gp
+    if model_type == 'knn':
+        feature_gp = 'knn'
+    else:
+        feature_gp = gp
 
 
     # test = analysis_start_zone_id(threshold, cur_train, test)
@@ -160,7 +199,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
     for out_id in test.out_id.drop_duplicates():
         count += 1
         single_test = test.loc[test.out_id == out_id].copy()
-        single_train = train.loc[train.out_id == out_id]
+        single_train = train.loc[train.out_id == out_id].copy()
         #logger.debug(out_id)
         predict_result, message = predict_outid(kw, model_type, single_test, single_train)
         predict_result['model_type'] = model_type
@@ -184,6 +223,18 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 
     return predict_list
 
+# def scale_df(train, test):
+#
+#     #logger.debug(f'Scale convert:{train.columns}')
+#     scale = StandardScaler()
+#     #logger.debug(f'{train.shape}, {test.shape}')
+#     scale.fit(train[get_feature_columns('knn')])
+#
+#     col_list = get_feature_columns('knn')
+#     train[col_list]  = scale.transform(train[col_list])
+#     test[col_list] = scale.transform(test[col_list])
+#     return  train, test
+
 
 def predict_outid(kw, model_type,  test, train):
     #logger.debug(len(train))
@@ -194,6 +245,8 @@ def predict_outid(kw, model_type,  test, train):
     else:
         # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
+
+        # train, test = scale_df(train, test)
         model = get_mode(out_id, train, model_type=model_type, **kw)
         result = predict(model, test)
         #logger.debug(result.shape)
