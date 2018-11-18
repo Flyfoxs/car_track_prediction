@@ -10,7 +10,10 @@ handler = logging.FileHandler('./log/forecast.log', 'a')
 handler.setFormatter(format)
 logger.addHandler(handler)
 
-
+import socket
+host_name = socket.gethostname()
+host_ip = socket.gethostbyname(host_name)
+logger.debug(f'Start the program at:{host_name}, {host_ip}=======')
 
 import functools
 import time

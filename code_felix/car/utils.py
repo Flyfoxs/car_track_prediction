@@ -284,7 +284,7 @@ def get_zone_inf(out_id, train, test):
 
 def cal_loss_for_df(df):
     from code_felix.car.distance_reduce import getDistance
-    if 'end_lat' in df:
+    if not df.empty and 'end_lat' in df:
         df['loss_dis'] = df.apply(lambda row: getDistance(row.end_lat, row.end_lon, row.predict_lat, row.predict_lon ) , axis=1)
         df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
         final_loss = round(df.final_loss.mean(), 5)

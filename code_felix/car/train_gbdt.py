@@ -53,7 +53,10 @@ def train_model_lgb(X, Y, **kw):
     #logger.debug(clf.feature_importances_)
     return bst
 def train_model_rf(X, Y, **kw):
-    clf = RandomForestClassifier(max_depth=kw['max_depth'], n_estimators = kw['num_round'], random_state=0)
+    clf = RandomForestClassifier(max_depth=kw['max_depth'],
+                                 n_estimators = kw['num_round'],
+                                 n_jobs=4,
+                                 random_state=0)
     #Y = Y.astype('category')
     clf = clf.fit(X, Y.cat.codes)
     #logger.debug(clf.feature_importances_)
@@ -147,7 +150,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
     out_id_list = test.out_id.drop_duplicates()
 
-    val = process_df(train, test, threshold, gp, model_type, **kw)
+    val , _ = process_df(train, test, threshold, gp, model_type, **kw)
 
     if file=='new':
         sub_df = val[['predict_lat', 'predict_lon']]
@@ -172,7 +175,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
         train = train[train.out_id.isin(out_id_list)]
         test = test[test.out_id.isin(out_id_list)]
 
-        sub = process_df(train, test, threshold, gp, model_type, **kw)
+        sub, _ = process_df(train, test, threshold, gp, model_type, **kw)
 
         file_ensemble = f'./output/ensemble/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
         save_df(val, sub, file_ensemble)
@@ -195,6 +198,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
     # test['predict_zone_id'] = None
 
     predict_list = []
+    val_list = []
     car_num = len(test.out_id.drop_duplicates())
     count = 0
     for out_id in test.out_id.drop_duplicates():
@@ -202,20 +206,32 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id].copy()
         #logger.debug(out_id)
-        predict_result, message = predict_outid(kw, model_type, single_test, single_train, split_num)
+        predict_result, val_result, message = predict_outid(kw, model_type, single_test, single_train, split_num)
         predict_result['model_type'] = model_type
         predict_result['threshold'] = threshold
         predict_result['kw'] = str(kw)
         logger.debug(f'{count}/{car_num}, {message}')
 
         predict_list.append(predict_result)
+        if split_num > 1:
+            val_result['model_type'] = model_type
+            val_result['threshold'] = threshold
+            val_result['kw'] = str(kw)
+            val_list.append(val_result)
+        else:
+            val_list = None
+
 
     predict_list = pd.concat(predict_list)
     predict_list.set_index('r_key',inplace=True)
-
     predict_list = pd.DataFrame(index=test.r_key).join(predict_list)
+    if split_num > 1:
+        val_list = pd.concat(val_list)
+        val_list.set_index('r_key', inplace=True)
+    else:
+        val_list = None
 
-    return predict_list
+    return predict_list, val_list
 
 # def scale_df(train, test):
 #
@@ -245,12 +261,18 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
         split_partition = [(range(0, len(train)), 0)]
 
     result_all = []
+    val_all = []
     #split_partition = [(range(0, len(train)), 0)]
     for folder, (train_index, val_index) in enumerate(split_partition):
         split_train = train.iloc[train_index]
         col_name = split_train.end_zoneid.astype('category').cat.categories
+
+        split_val   = train.iloc[val_index]
+        #logger.debug(len(split_val))
+
         if classes_num == 1:
             test_propability = np.ones((len(test), 1))
+            val_propability = np.ones((len(split_val), 1))
         else:
             # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
@@ -258,13 +280,17 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
             # train, test = scale_df(train, test)
             model = get_mode(out_id, split_train, model_type=model_type, **kw)
             test_propability = predict(model, test)
+            if split_num > 1:
+                val_propability = predict(model, split_val)
 
         #result  = pd.DataFrame(result_propability, columns=col_name, index=test.r_key)
         test_propability = pd.DataFrame(test_propability, columns=col_name, index=test.r_key)
         test_propability.index.name = 'r_key'
         test_propability.reset_index(inplace=True)
         result_all.append(test_propability)
-
+        if split_num > 1:
+            val_propability = pd.DataFrame(val_propability, columns=col_name, index=split_val.r_key)
+            val_all.append(val_propability)
 
         # logger.debug(result[:10])
     logger.debug(f'Folder for outid#{out_id} is done')
@@ -272,6 +298,18 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
     result = result_merge.groupby('r_key').mean()
     #logger.debug(f'{result_merge.shape}, {test_propability.shape}' )
     logger.debug(f'End merge the result of {split_num} Kfolder')
+    if split_num > 1:
+        logger.debug(f'Try to analysis the validate set')
+        val = pd.concat(val_all)
+        val = val.idxmax(axis=1)
+        train_val = train.copy(deep=True)
+        train_val['predict_zone_id'] = val.loc[train_val.r_key].values
+        val_result = get_zone_inf(out_id, train, train_val)
+        val_loss = cal_loss_for_df(val_result)
+        logger.debug(f'Val_loss is {val_loss} for out_id:{out_id}')
+    else:
+        val_result = None
+
 
     result = result.idxmax(axis=1)
     test['predict_zone_id'] = result.values
@@ -281,7 +319,7 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
     message = f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)}  " \
               f"outid:{out_id}, cls:{classes_num}, "\
               f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records"
-    return predict_result, message
+    return predict_result, val_result, message
 
 def filter_train(df, topn=50):
     out_id = df.out_id.values[0]

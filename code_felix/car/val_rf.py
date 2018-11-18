@@ -13,10 +13,10 @@ if __name__ == '__main__':
 
 
     for threshold in [500]:
-        for sub in sorted(['0gp=1242','1gp=1185','2gp=1114','3gp=1138','4gp=1138',], reverse=False):
+        for sub in sorted(['0gp=1242','1gp=1185','2gp=1114','3gp=1138','4gp=1138',], reverse=True):
             for deep in [4]:
                 for feature_gp in [0]:
-                    for split_num in [9, 5, 3]:
+                    for split_num in [9]:
                         gen_sub(sub, threshold, feature_gp, 'rf', max_depth=deep, num_round=100, split_num= split_num)
 
     # for threshold in sorted([  40,70,500, 30, 50, 450, 550, 2000], reverse=True):

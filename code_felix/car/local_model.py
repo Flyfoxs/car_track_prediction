@@ -9,10 +9,12 @@ for threshold in [500]:
     for gp in [ 0]:
         for model in [  'rf', ]:
             for deep in [4]:
-                   for  file in [ '3gp237' ]: #,,, '4gp95'
+                   for  file in [ '0gp=1242',
+                                  #'3gp237' ,
+                                          ]: #,,, '4gp95'
                        for n_neighbors in [19]:
                            for p in [5]:
-                               for split_num in range(11, 15):
+                               for split_num in [1,9]:
                                     #threshold=500
                                     cur_train = f'{DATA_DIR}/train_{file}.csv'
                                     cur_test = f'{DATA_DIR}/test_{file}.csv'
@@ -25,8 +27,9 @@ for threshold in [500]:
 
                                     #n_neighbors = kw['n_neighbors']  # 15
                                     #weights = kw['weights']  # 'distance'
-                                    val_df = process_df(train, test, threshold, gp, model,
-                                                        max_depth=deep, num_round=100,n_neighbors = n_neighbors, split_num= split_num)
+                                    val_df, _ = process_df(train, test, threshold, gp, model,
+                                                        max_depth=deep, num_round=100,
+                                                        n_neighbors = n_neighbors, split_num= split_num)
                                     loss = cal_loss_for_df(val_df)
 
                                     feature_gp = 'knn' if model =='knn' else gp
