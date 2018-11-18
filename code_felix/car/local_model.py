@@ -12,7 +12,7 @@ for threshold in [500]:
                    for  file in [ '3gp237' ]: #,,, '4gp95'
                        for n_neighbors in [19]:
                            for p in [5]:
-                               for split_num in range(5, 11):
+                               for split_num in range(11, 15):
                                     #threshold=500
                                     cur_train = f'{DATA_DIR}/train_{file}.csv'
                                     cur_test = f'{DATA_DIR}/test_{file}.csv'

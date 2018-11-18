@@ -271,7 +271,7 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
     result_merge = pd.concat(result_all, ignore_index=True)
     result = result_merge.groupby('r_key').mean()
     #logger.debug(f'{result_merge.shape}, {test_propability.shape}' )
-    logger.debug(f'End merge the result of Kfolder')
+    logger.debug(f'End merge the result of {split_num} Kfolder')
 
     result = result.idxmax(axis=1)
     test['predict_zone_id'] = result.values
