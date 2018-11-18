@@ -180,6 +180,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 
 @timed()
 def process_df(train, test, threshold, gp, model_type, **kw):
+    split_num = kw['split_num']
 
     global feature_gp
     if model_type == 'knn':
@@ -201,7 +202,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id].copy()
         #logger.debug(out_id)
-        predict_result, message = predict_outid(kw, model_type, single_test, single_train)
+        predict_result, message = predict_outid(kw, model_type, single_test, single_train, split_num)
         predict_result['model_type'] = model_type
         predict_result['threshold'] = threshold
         predict_result['kw'] = str(kw)
@@ -229,31 +230,52 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 #     return  train, test
 
 
-def predict_outid(kw, model_type,  test, train):
+def predict_outid(kw, model_type,  test, train, split_num =5):
     #logger.debug(len(train))
     out_id = train.out_id.values[0]
     classes_num = len(train.end_zoneid.drop_duplicates())
 
-    col_name = train.end_zoneid.astype('category').cat.categories
-    if classes_num == 1:
-        result_propability = np.ones((1,len(test)))
+    test = test.sort_values('r_key')
+    from sklearn.model_selection import KFold
+
+    if split_num > 1:
+        kf = KFold(n_splits=split_num, shuffle=True, random_state=777)
+        split_partition = kf.split(train)
     else:
-        # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
+        split_partition = [(range(0, len(train)), 0)]
+
+    result_all = []
+    #split_partition = [(range(0, len(train)), 0)]
+    for folder, (train_index, val_index) in enumerate(split_partition):
+        split_train = train.iloc[train_index]
+        col_name = split_train.end_zoneid.astype('category').cat.categories
+        if classes_num == 1:
+            test_propability = np.ones((len(test), 1))
+        else:
+            # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 
 
-        # train, test = scale_df(train, test)
-        model = get_mode(out_id, train, model_type=model_type, **kw)
-        result_propability = predict(model, test)
+            # train, test = scale_df(train, test)
+            model = get_mode(out_id, split_train, model_type=model_type, **kw)
+            test_propability = predict(model, test)
 
-    result  = pd.DataFrame(result_propability, columns=col_name, index=test.r_key)
-    logger.debug(result.shape)
-    # logger.debug(result[:10])
+        #result  = pd.DataFrame(result_propability, columns=col_name, index=test.r_key)
+        test_propability = pd.DataFrame(test_propability, columns=col_name, index=test.r_key)
+        test_propability.index.name = 'r_key'
+        test_propability.reset_index(inplace=True)
+        result_all.append(test_propability)
+
+
+        # logger.debug(result[:10])
+    logger.debug(f'Folder for outid#{out_id} is done')
+    result_merge = pd.concat(result_all, ignore_index=True)
+    result = result_merge.groupby('r_key').mean()
+    #logger.debug(f'{result_merge.shape}, {test_propability.shape}' )
+    logger.debug(f'End merge the result of Kfolder')
+
     result = result.idxmax(axis=1)
-
-
-    logger.debug(result.values)
     test['predict_zone_id'] = result.values
-    logger.debug(test.predict_zone_id)
+    #logger.debug(test.predict_zone_id)
     predict_result = get_zone_inf(out_id, train, test)
     sing_loss = cal_loss_for_df(predict_result)
     message = f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)}  " \
