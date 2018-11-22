@@ -12,9 +12,11 @@ from sklearn import datasets
 import pandas as pd
 
 from functools import lru_cache
+from code_felix.utils_.util_cache_file import *
 from sklearn.model_selection import KFold
 from keras.callbacks import ModelCheckpoint, EarlyStopping
 import numpy as np
+from keras import backend as K
 
 
 def get_partition_file_list(partition_name, split_num, top=1, path='./output/ensemble/', ):
@@ -44,14 +46,14 @@ def baseline_model(input_dim, output_dim):
     return model
 
 
-@lru_cache()
+@file_cache(prefix='stacking')
 @timed()
 def get_train(file_list):
     file_list = file_list.split(',')
     return merge_file(file_list, 'ensemble_train')
 
 
-@lru_cache()
+@file_cache(prefix='stacking')
 @timed()
 def get_test(file_list):
     file_list = file_list.split(',')
@@ -73,18 +75,19 @@ def merge_file(file_list, key):
         df = pd.read_hdf(file, key)
         df_list.append(df)
     df_merge = pd.concat(df_list, axis=1)
+    df_merge.columns = range(0, df_merge.shape[1])
     df_merge.fillna(0, inplace=True)
     return df_merge
 
 
-@lru_cache()
+@file_cache(prefix='stacking')
 @timed()
 def get_raw_test():
     test = pd.read_csv('./input/del/test_new.csv', delimiter=',', dtype=test_dict)
     return test[['out_id', 'r_key']]
 
 
-@lru_cache()
+@file_cache(prefix='stacking')
 def get_label(file_list):
     file_list = file_list.split(',')
     df = pd.read_hdf(file_list[0], 'val')
@@ -105,10 +108,10 @@ def get_outid_inf(file_list, out_id):
     mini_label = label[label.out_id == out_id]
     mini_label.sort_index(inplace=True)
 
-    mini_train = train.loc[mini_label.index]
+    mini_train = train.loc[mini_label.index].copy()
 
     raw_test = get_raw_test()
-    mini_test = test.loc[raw_test[raw_test.out_id == out_id].r_key]
+    mini_test = test.loc[raw_test[raw_test.out_id == out_id].r_key].copy()
 
     from keras.utils import np_utils
     mini_label = pd.DataFrame(np_utils.to_categorical(mini_label.end_zoneid.astype('category').cat.codes),
@@ -117,25 +120,33 @@ def get_outid_inf(file_list, out_id):
 
     return mini_train, mini_test, mini_label
 
-
+@timed()
 def process_partition(partition_list, split_num, top_file):
     for partition in partition_list:
         file_list = get_partition_file_list(partition, split_num, top_file)
         file_list = ','.join(file_list)
         # print(get_label(file_list))
-        out_id_list = get_label(file_list).out_id.drop_duplicates()
+        label = get_label(file_list)
+        out_id_count = label.groupby('out_id')['out_id'].count().sort_values(ascending=False)
+
         sub_list = []
         val_list = []
-        for out_id in out_id_list:
+        for out_id in out_id_count.index:
             train, test, label = get_outid_inf(file_list, out_id)
             print(train.shape, test.shape, label.shape, out_id, )
             sub, val = learning(train, label, test, out_id, split_num)
             sub_list.append(sub)
             val_list.append(val)
+            logger.debug("Sub head")
+            logger.debug(sub.idxmax(axis=1).head(2))
+
         val_all = pd.concat(val_list).sort_index()
         label = get_label(file_list).sort_index()
         accuracy_partition = np.mean(np.argmax(val_all.values, axis=1) == np.argmax(label.values, axis=1))
         logger.debug(f'The accuracy for partition:{partition}, split_num:{split_num} is {accuracy_partition}')
+
+
+
 
 
 @timed()
@@ -146,6 +157,7 @@ def learning(train, label, test, out_id, split_num, ):
     accuracy_list = []
     sub_list = []
     for folder, (train_index, val_index) in enumerate(split_partition):
+
         model = wider_model(train.shape[1], label.shape[1])
         early_stop = EarlyStopping(monitor='val_loss', verbose=1, patience=50, )
 
@@ -154,8 +166,8 @@ def learning(train, label, test, out_id, split_num, ):
         #                              monitor='val_loss', verbose=1,
         #                              save_best_only=True, mode='min')
 
-        check_best = ReviewCheckpoint(folder, train.iloc[val_index], label.iloc[val_index])
-
+        check_best = ReviewCheckpoint(model_file, folder, train.iloc[val_index], label.iloc[val_index])
+        start = time.time()
         history = model.fit(train.iloc[train_index], label.iloc[train_index],
                             validation_data=(train.iloc[val_index], label.iloc[val_index]),
                             callbacks=[check_best,
@@ -165,11 +177,13 @@ def learning(train, label, test, out_id, split_num, ):
                             batch_size=32,
                             epochs=100,
                             )
+        duration = time.time() - start
+        logging.info('cost:%7.2f sec: ===%s' % (duration, f'Fit the out_id:{out_id}, folder:{folder}'))
 
         from keras import models
-        best_accuracy = models.load_model(model_file)
+        best_model = models.load_model(model_file)
         val = train.iloc[val_index]
-        acc = pd.DataFrame(best_accuracy.predict(val), columns=label.columns, index=val.index)
+        acc = pd.DataFrame(best_model.predict(val), columns=label.columns, index=val.index)
         accuracy_list.append(acc)
         accuracy_rate = np.mean(np.argmax(acc.values, axis=1) == np.argmax(label.values[val_index], axis=1))
         logger.debug(f'Folder:{folder}, The best accuracy for out_id:{out_id} is {round(accuracy_rate,4)}')
@@ -177,13 +191,23 @@ def learning(train, label, test, out_id, split_num, ):
         best_epoch = np.array(history.history['val_loss']).argmin() + 1
         best_score = np.array(history.history['val_loss']).min()
 
-        sub = pd.DataFrame(model.predict(test), columns=label.columns, index=test.index)
+        sub_folder = pd.DataFrame(model.predict(test), columns=label.columns, index=test.index)
+        sub_list.append(sub_folder)
+
+        del model
+        del best_model
+        #K.clear_session()
+
     val_all = pd.concat(accuracy_list).sort_index()
     label = label.sort_index()
     accuracy = np.mean(np.argmax(val_all.values, axis=1) == np.argmax(label.values, axis=1))
-    logger.debug(f'The final accuracy for out_id:{out_id} is <<{round(accuracy,4)}>>')
+    logger.debug(f'The final accuracy for out_id({len(train)}):{out_id} is <<{round(accuracy,4)}>>')
 
-    return sub, val_all
+    sub_merge = pd.concat(sub_list)
+    sub_merge.index.name='r_key'
+    sub_mean = sub_merge.reset_index().groupby('r_key').mean()
+
+    return sub_mean, val_all
 
 
 def wider_model(input_dim, output_dim):
