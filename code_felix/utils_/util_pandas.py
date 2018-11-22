@@ -75,24 +75,3 @@ def flat_columns(df, prefix=None):
 
 def drop_empty_item(item):
     return [str(val) for val in item if val is not None and len(str(val))>0]
-
-def save_df(val, sub, path):
-    import os
-    path = replace_invalid_filename_char(path)
-    logger.debug("Save ensmeble result to file:%s" % path)
-    if not os.path.exists(os.path.dirname(path)):
-        os.mkdir(os.path.dirname(path))
-
-    if 'distance' not in val:
-        val['distance'] = val.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon),
-                                      axis=1)
-
-    val.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
-                 ], axis=1, inplace=True, errors='ignore')
-    sub.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
-                 ], axis=1, inplace=True, errors='ignore')
-
-    val.to_hdf(path, 'val', index=True,)
-    sub.to_hdf(path, 'sub', index=True, )
-    return path
-

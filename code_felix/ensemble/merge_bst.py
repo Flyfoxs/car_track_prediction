@@ -15,16 +15,32 @@ if __name__ == '__main__':
     # pattern = re.compile(r'.*43959.*h5$')
 
     path_list =[
-        '0.58992_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=9gp=582.h5',
-        '0.52281_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=8gp=556.h5',
-        '0.49089_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=7gp=558.h5',
-        '0.45590_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=6gp=580.h5',
-        '0.43673_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=5gp=593.h5',
-        '0.42054_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=4gp=521.h5',
-        '0.40179_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=3gp=627.h5',
-        '0.37475_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=2gp=558.h5',
-        '0.32143_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=1gp=604.h5',
-        '0.22881_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=0gp=638.h5',
+        # '0.43957_rf_70_kwmax_depth4num_round100model_typerfgp0threshold70fileall_2.h5',
+        # '0.43959_rf_40_kwmax_depth4num_round100model_typerfgp0threshold40fileall_2.h5',
+        # '0.43960_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500fileall_2.h5',
+       #Bad '0.790_rf_2000_kwmax_depth4num_round100model_typerfgp0threshold2000fileworse.h5',
+
+        ########## 20% val ###########
+        # '0.41938_rf_550_kwmax_depth4num_round100model_typerfgp0threshold550fileall_3.h5',
+        # #'0.41957_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500fileall_3.h5',
+        #
+
+        # '0.29215_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file0gp=1242.h5',
+        # '0.39439_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file1gp=1185.h5',
+        # '0.43971_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file2gp=1114.h5',
+        # '0.47908_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file3gp=1138.h5',
+        # '0.55279_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file4gp=1138.h5',
+
+        '0.28951_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file0gp=1242.h5',
+
+        #'0.39170_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file1gp=1185.h5',
+        '0.39069_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500file1gp=1185.h5',
+
+        '0.43602_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file2gp=1114.h5',
+        #'0.43578_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500file2gp=1114.h5',
+
+        '0.47525_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file3gp=1138.h5',
+        '0.54782_rf_500_kwmax_depth4num_round100model_typerfgp0threshold500file4gp=1138.h5',
 
     ]
 

@@ -30,6 +30,9 @@
 * Long distance times, 
 * center#1 to center#2 distance
 * group out_id(zoneid count, distance count)
+* dynamic reduce address
+* duration is usless
+* Latest data has hight priority
 
 * Continue reduce for car_id with multiply addressid
 * Time avg distance

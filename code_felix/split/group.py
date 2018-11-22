@@ -67,11 +67,11 @@ def get_worse_case(score=0.6, count=5):
     return val_all[(val_all.min_ >= score) & (val_all['count'] >= count)]
 
 
-def split_2_group():
+def split_2_group(gp_num=5):
     train = get_train_with_adjust_position(500, './input/train_new.csv')
     gp_train = train.groupby('out_id')['end_zoneid'].nunique().to_frame().reset_index()
     #gp_train['group'] = pd.cut(gp_train.end_zoneid.astype('int'), [0, 40, 50, 80, 100, 500])
-    gp_train['group'] = pd.qcut(gp_train.end_zoneid.astype('int'), 5)
+    gp_train['group'] = pd.qcut(gp_train.end_zoneid.astype('int'), gp_num)
     gp_train['group_sn'] = gp_train['group'].cat.codes
     gp_train.head()
     return  gp_train
@@ -104,5 +104,27 @@ def split_2_file():
                             & (train.out_id.isin(outid_list.out_id))]
         train_train.to_csv(train_train_file, index=None)
 
+def split_2_new():
+    train = pd.read_csv('./input/del/train_new.csv', delimiter=',', dtype=train_dict)
+    test = pd.read_csv('./input/del/test_new.csv', delimiter=',', dtype=test_dict)
+    gp = split_2_group(10)
+    for gp_name, outid_list in gp.groupby('group_sn'):
+        gp_count = len(outid_list)
+
+        gp_train = train[train.out_id.isin(outid_list.out_id) ]
+        gp_test = test[test.out_id.isin(outid_list.out_id) ]
+
+        train_file = f'{DATA_DIR}/train_new={gp_name}gp={gp_count}.csv'
+        test_file = f'{DATA_DIR}/test_new={gp_name}gp={gp_count}.csv'
+
+        gp_train.to_csv(train_file, index=None)
+        gp_test.to_csv(test_file, index=None)
+
+        # logger.debug(len(validate), len(validate.out_id.drop_duplicates()))
+
+
+
+
 if __name__ == '__main__':
-    split_2_file()
+    split_2_new()
+    #split_2_file()

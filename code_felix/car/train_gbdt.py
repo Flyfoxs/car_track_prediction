@@ -15,14 +15,20 @@ from code_felix.utils_.other import replace_invalid_filename_char, get_gpu_paras
 feature_gp=0
 
 def get_features(out_id, df):
+    if df is None:
+        return None, None
+
     if out_id is not None:
-        df = df[df.out_id == out_id]
+        df = df.loc[df.out_id == out_id]
     global feature_gp
 
     feature = df[get_feature_columns(feature_gp)]
     if 'start_lat' in feature:
-        feature.start_lat = feature.start_lat.astype(float)
-        feature.start_lon = feature.start_lon.astype(float)
+        #disable SettingwithCopyWarning
+        pd.reset_option('mode.chained_assignment')
+        with pd.option_context('mode.chained_assignment', None):
+            feature.start_lat = feature.start_lat.astype(float).values
+            feature.start_lon = feature.start_lon.astype(float).values
 
     #logger.debug(f'feature_gp:{feature_gp}')
     if 'end_zoneid' in df:
@@ -30,13 +36,19 @@ def get_features(out_id, df):
     else:
         return feature, None
 
-def train_model_lgb(X, Y, **kw):
+def train_model_lgb(X, Y,val_X, val_Y, **kw):
     num_round = kw['num_round']
     max_depth = kw['max_depth']
+    min_data_in_leaf = kw['min_data_in_leaf']
 
     param = {'num_leaves': 31, 'verbose': -1,'max_depth': max_depth,
              'num_class': len(Y.cat.categories),
              'objective': 'multiclass',
+             # 'boosting':'rf',
+             # 'bagging_fraction':0.7,
+             # 'bagging_freq':1,
+             #  'feature_fraction':0.7,
+             'min_data_in_leaf': min_data_in_leaf,
               #**get_gpu_paras('lgb')
              }
     param['metric'] = ['multi_logloss']
@@ -45,10 +57,14 @@ def train_model_lgb(X, Y, **kw):
     # 'num_leaves':num_leaves,
 
     train_data = lgb.Dataset(X, label=Y.cat.codes)
-    test_data = lgb.Dataset(X, label=Y.cat.codes, reference=train_data)
+    test_data = lgb.Dataset(val_X, label=val_Y.cat.codes, reference=train_data)
 
 
-    bst = lgb.train(param, train_data, num_round, valid_sets=[test_data], verbose_eval=False)
+    bst = lgb.train(param, train_data,
+                    num_round,
+                    early_stopping_rounds=20,
+                    valid_sets=[test_data],
+                    verbose_eval=False)
 
     #logger.debug(clf.feature_importances_)
     return bst
@@ -63,14 +79,15 @@ def train_model_rf(X, Y, **kw):
     return clf
 
 
-def get_mode(out_id, df, model_type='lgb', **kw):
+def get_mode(out_id, df, df_val=None, model_type='lgb', **kw):
     if model_type == 'knn':
         global feature_gp
         feature_gp = 'knn'
 
     X, Y = get_features(out_id, df)
+    val_X, val_Y = get_features(out_id, df_val)
     if model_type == 'lgb':
-        model = train_model_lgb(X, Y, **kw)
+        model = train_model_lgb(X, Y,val_X, val_Y, **kw)
     elif model_type == 'rf':
         model = train_model_rf(X, Y, **kw)
     elif model_type == 'xgb':
@@ -92,6 +109,7 @@ def train_model_xgb(X, Y, **kw):
     #logger.debug(f'{len(Y.cat.categories)}, {Y.cat.categories}')
     param = {'verbose': -1,'max_depth': max_depth,
              'num_class': len(Y.cat.categories),
+             'boosting':'rf',
              'objective': 'multi:softprob',
              'silent': True,
               **get_gpu_paras('xgb')
@@ -116,7 +134,7 @@ def train_model_knn(X, Y, **kw):
     weights= kw['weights'] if 'weights' in kw else None #'distance'
     p=kw['p'] if 'p' in kw else 5
     clf = neighbors.KNeighborsClassifier(n_neighbors, weights=weights, p=p)
-    clf.fit(X, Y)
+    clf.fit(X, Y.cat.codes)
 
 
     return clf
@@ -131,7 +149,7 @@ def predict(model,  X):
         return model.predict(xgb.DMatrix(predict_input))
     elif isinstance(model, lgb.basic.Booster):
         #logger.debug(f'Xgboost:{type(model)}')
-        return model.predict(predict_input)
+        return model.predict(predict_input, num_iteration=model.best_iteration)
     elif isinstance(model, RandomForestClassifier) \
             or isinstance(model, ExtraTreesClassifier)\
             or isinstance(model, KNeighborsClassifier)  :
@@ -143,42 +161,28 @@ def predict(model,  X):
 @timed()
 def gen_sub(file, threshold, gp, model_type, **kw):
     args = locals()
+    logger_begin_paras(args)
+
     cur_train = f'{DATA_DIR}/train_{file}.csv'
     cur_test = f'{DATA_DIR}/test_{file}.csv'
-
     train = get_train_with_adjust_position(threshold, cur_train)
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+
     out_id_list = test.out_id.drop_duplicates()
 
-    val , _ = process_df(train, test, threshold, gp, model_type, **kw)
+    train = train[train.out_id.isin(out_id_list)]
+    test = test[test.out_id.isin(out_id_list)]
 
-    if file=='new':
-        sub_df = val[['predict_lat', 'predict_lon']]
-        sub_df.columns = ['end_lat', 'end_lon']
-        sub_df.index.name = 'r_key'
-        sub_file = replace_invalid_filename_char(f'./output/sub_{model_type}_{args}.csv')
-        sub_df.to_csv(sub_file)
-        logger.debug(f'Sub file is save to {sub_file}')
-    else:
-        loss = cal_loss_for_df(val)
-        if loss:
-            logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {len(out_id_list)} cars, "
-                         f"{len(get_feature_columns(feature_gp))} feature, "
-                         f"{len(val)} samples, args:{args}")
+    sub, val, ensemble_test, ensemble_train = process_df(train, test, threshold, gp, model_type, **kw)
 
+    loss, accuracy = cal_loss_for_df(val)
 
-        cur_train = f'{DATA_DIR}/train_new.csv'
-        cur_test = f'{DATA_DIR}/test_new.csv'
-        train = get_train_with_adjust_position(threshold, cur_train)
-        test = get_test_with_adjust_position(threshold, cur_train, cur_test)
+    file_ensemble = f'./output/ensemble/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
+    save_df(val, sub, ensemble_test, ensemble_train, file_ensemble)
 
-        train = train[train.out_id.isin(out_id_list)]
-        test = test[test.out_id.isin(out_id_list)]
-
-        sub, _ = process_df(train, test, threshold, gp, model_type, **kw)
-
-        file_ensemble = f'./output/ensemble/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
-        save_df(val, sub, file_ensemble)
+    logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {len(out_id_list)} cars, "
+                 f"{len(get_feature_columns(feature_gp))} feature, "
+                 f"{len(val)} samples, args:{args}")
 
 
 @timed()
@@ -199,6 +203,8 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 
     predict_list = []
     val_list = []
+    ensemble_train = []
+    ensemble_test = []
     car_num = len(test.out_id.drop_duplicates())
     count = 0
     for out_id in test.out_id.drop_duplicates():
@@ -206,7 +212,10 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id].copy()
         #logger.debug(out_id)
-        predict_result, val_result, message = predict_outid(kw, model_type, single_test, single_train, split_num)
+        predict_result, val_result, test_result, train_result, message = predict_outid(kw, model_type, single_test, single_train, split_num)
+        ensemble_train.append(train_result)
+        ensemble_test.append(test_result)
+
         predict_result['model_type'] = model_type
         predict_result['threshold'] = threshold
         predict_result['kw'] = str(kw)
@@ -221,7 +230,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         else:
             val_list = None
 
-
+    #logger.debug('=====1')
     predict_list = pd.concat(predict_list)
     predict_list.set_index('r_key',inplace=True)
     predict_list = pd.DataFrame(index=test.r_key).join(predict_list)
@@ -231,7 +240,10 @@ def process_df(train, test, threshold, gp, model_type, **kw):
     else:
         val_list = None
 
-    return predict_list, val_list
+    if ensemble_train is None or len(ensemble_train)==0:
+        ensemble_train = pd.DataFrame()
+
+    return predict_list, val_list, pd.concat(ensemble_test), pd.concat(ensemble_train)
 
 # def scale_df(train, test):
 #
@@ -245,11 +257,11 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 #     test[col_list] = scale.transform(test[col_list])
 #     return  train, test
 
-
+@timed()
 def predict_outid(kw, model_type,  test, train, split_num =5):
     #logger.debug(len(train))
     out_id = train.out_id.values[0]
-    classes_num = len(train.end_zoneid.drop_duplicates())
+
 
     test = test.sort_values('r_key')
     from sklearn.model_selection import KFold
@@ -258,18 +270,23 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
         kf = KFold(n_splits=split_num, shuffle=True, random_state=777)
         split_partition = kf.split(train)
     else:
-        split_partition = [(range(0, len(train)), 0)]
+        split_partition = [(range(0, len(train)), None)]
 
     result_all = []
     val_all = []
     #split_partition = [(range(0, len(train)), 0)]
     for folder, (train_index, val_index) in enumerate(split_partition):
+        #logger.debug('=====2')
         split_train = train.iloc[train_index]
         col_name = split_train.end_zoneid.astype('category').cat.categories
-
-        split_val   = train.iloc[val_index]
+        if  val_index is not None and len(val_index)>0:
+            split_val  = train.iloc[val_index]
+        else:
+            split_val = None
         #logger.debug(len(split_val))
 
+        #logger.debug('=====3')
+        classes_num = len(split_train.end_zoneid.drop_duplicates())
         if classes_num == 1:
             test_propability = np.ones((len(test), 1))
             val_propability = np.ones((len(split_val), 1))
@@ -278,16 +295,18 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
 
 
             # train, test = scale_df(train, test)
-            model = get_mode(out_id, split_train, model_type=model_type, **kw)
+            model = get_mode(out_id, split_train, split_val, model_type=model_type, **kw)
             test_propability = predict(model, test)
             if split_num > 1:
                 val_propability = predict(model, split_val)
 
+        #logger.debug('=====4')
         #result  = pd.DataFrame(result_propability, columns=col_name, index=test.r_key)
         test_propability = pd.DataFrame(test_propability, columns=col_name, index=test.r_key)
         test_propability.index.name = 'r_key'
         test_propability.reset_index(inplace=True)
         result_all.append(test_propability)
+        #logger.debug('=====5')
         if split_num > 1:
             val_propability = pd.DataFrame(val_propability, columns=col_name, index=split_val.r_key)
             val_all.append(val_propability)
@@ -295,31 +314,34 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
         # logger.debug(result[:10])
     logger.debug(f'Folder for outid#{out_id} is done')
     result_merge = pd.concat(result_all, ignore_index=True)
-    result = result_merge.groupby('r_key').mean()
+    test_result = result_merge.groupby('r_key').mean()
     #logger.debug(f'{result_merge.shape}, {test_propability.shape}' )
     logger.debug(f'End merge the result of {split_num} Kfolder')
+
     if split_num > 1:
         logger.debug(f'Try to analysis the validate set')
-        val = pd.concat(val_all)
-        val = val.idxmax(axis=1)
+        train_result = pd.concat(val_all)
+        val = train_result.idxmax(axis=1)
         train_val = train.copy(deep=True)
         train_val['predict_zone_id'] = val.loc[train_val.r_key].values
         val_result = get_zone_inf(out_id, train, train_val)
-        val_loss = cal_loss_for_df(val_result)
-        logger.debug(f'Val_loss is {val_loss} for out_id:{out_id}')
+        val_loss, accuracy  = cal_loss_for_df(val_result)
+        logger.debug(f'Val_loss:{val_loss}, accuracy:{accuracy} for out_id:{out_id}')
     else:
+        #No split model
         val_result = None
+        train_result = None
 
 
-    result = result.idxmax(axis=1)
-    test['predict_zone_id'] = result.values
+    result_zone_id = test_result.idxmax(axis=1)
+    test['predict_zone_id'] = result_zone_id.values
     #logger.debug(test.predict_zone_id)
     predict_result = get_zone_inf(out_id, train, test)
-    sing_loss = cal_loss_for_df(predict_result)
+    sing_loss, test_accuracy = cal_loss_for_df(predict_result)
     message = f"loss:{'Sub model' if sing_loss is None else '{:,.4f}'.format(sing_loss)}  " \
               f"outid:{out_id}, cls:{classes_num}, "\
               f"{len(test.loc[test.out_id == out_id])}/{len(train.loc[train.out_id == out_id])} records"
-    return predict_result, val_result, message
+    return predict_result, val_result, test_result, train_result,  message
 
 def filter_train(df, topn=50):
     out_id = df.out_id.values[0]

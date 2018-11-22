@@ -268,7 +268,7 @@ def loss_fun(gap):
 
 def get_zone_inf(out_id, train, test):
 
-    mini_train = train[train.out_id==out_id]
+    mini_train = train[train.out_id==out_id].copy()
 
     #logger.debug(mini.columns)
     mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj', 'end_sn']].drop_duplicates()
@@ -278,25 +278,26 @@ def get_zone_inf(out_id, train, test):
     #logger.debug(test.head(5))
     mini_test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
     mini_test[predict_cols] = mini_train.loc[mini_test.predict_zone_id].values
+    if 'end_lat' in mini_test:
+        #mini_test['end_zoneid'] =
+        pass
+
     # logger.debug(test.head(1))
     return mini_test
 
 
 def cal_loss_for_df(df):
     from code_felix.car.distance_reduce import getDistance
-    if not df.empty and 'end_lat' in df:
+    if not df.empty and 'end_zoneid' in df:
+        logger.debug(df.columns)
         df['loss_dis'] = df.apply(lambda row: getDistance(row.end_lat, row.end_lon, row.predict_lat, row.predict_lon ) , axis=1)
         df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
         final_loss = round(df.final_loss.mean(), 5)
-        out_id_len = len(df.out_id.drop_duplicates())
-        # if out_id_len==1:
-        #     # logger.debug(f'loss is {final_loss}, for car:{df.out_id[0]} with {len(df)} records')
-        # else:
-            # logger.debug(f'loss for {out_id_len} out_id is {final_loss}')
-        return final_loss
+        accuracy = np.mean(df.end_zoneid == df.predict_zone_id)
+        return final_loss, round(accuracy,4)
     else:
         #logger.debug(f"Sub model, for car:{df.out_id.values[0]} with {len(df)} records")
-        return None
+        return None, None
 
 @lru_cache()
 def get_feature_columns(gp='0'):
@@ -320,12 +321,7 @@ def get_feature_columns(gp='0'):
     elif gp == '3':
         feature_col.append('sz_start_sn_max')
     elif gp == 'knn':
-        feature_col = ['weekday',
-                       'weekend',
-                       # 'weekday',
-                       #'holiday',
-                       'hour', 'start_lat', 'start_lon', 'dis_center_0',   'dis_center_1', 'dis_center_2'
-                       ]
+        feature_col.extend(['dis_center_1', 'dis_center_2', ])
     else:
         logger.warning(f"Can not find gp#{gp} in fun#get_feature_columns")
 
@@ -347,6 +343,31 @@ def get_score_outid():
 #     mini = df[df.last_time <= pd.to_datetime('2018-05-01')]
 #     mini = mini[mini.times <= 3]
 #     return df[~df.index.isin(mini.index)]
+
+
+def save_df(val, sub, ensemble_test, ensemble_train,  path):
+    import os
+    path = replace_invalid_filename_char(path)
+    logger.debug("Save ensmeble result to file:%s" % path)
+    if not os.path.exists(os.path.dirname(path)):
+        os.mkdir(os.path.dirname(path))
+
+    if 'distance' not in val:
+        val['distance'] = val.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon),
+                                      axis=1)
+
+    val.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
+                 ], axis=1, inplace=True, errors='ignore')
+    sub.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
+                 ], axis=1, inplace=True, errors='ignore')
+
+    val.to_hdf(path, 'val', index=True,)
+    sub.to_hdf(path, 'sub', index=True, )
+
+    ensemble_test.to_hdf(path, 'ensemble_test', index=True, )
+    ensemble_train.to_hdf(path, 'ensemble_train', index=True, )
+    return path
+
 
 
 if __name__ == '__main__':
