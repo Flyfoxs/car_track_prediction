@@ -76,8 +76,8 @@ def merge_file(file_list, key):
         df = pd.read_hdf(file, key)
         df_list.append(df)
     df_merge = pd.concat(df_list, axis=1)
-    df_merge.columns = range(0, df_merge.shape[1])
-    df_merge.fillna(0, inplace=True)
+    df_merge.columns = [f'{index}#{col}' for index, col in zip(df_merge.columns, range(0, df_merge.shape[1]))]
+    #df_merge.fillna(0, inplace=True)
     return df_merge
 
 
@@ -115,9 +115,11 @@ def get_outid_inf(file_list, out_id=None):
     mini_label.sort_index(inplace=True)
 
     mini_train = train.loc[mini_label.index]#.copy()
+    mini_train = mini_train.dropna(axis=1, how='all').fillna(0)
 
     raw_test = get_raw_test()
     mini_test = test.loc[raw_test[raw_test.out_id == out_id].r_key]#.copy()
+    mini_test = mini_test.dropna(axis=1, how='all').fillna(0)
 
     from keras.utils import np_utils
     mini_label = pd.DataFrame(np_utils.to_categorical(mini_label.end_zoneid.astype('category').cat.codes),
@@ -146,12 +148,12 @@ def process_single_partition(partition, split_num, top_file):
     get_outid_inf(file_list)
     out_id_total = len(out_id_list.index)
     i = 0
-    for out_id in out_id_list.index :
+    for out_id in ['868260020955218', '891691612019981'] : #out_id_list.index :
         i += 1
         # Start a new process to avoid the memory leak in keras
         from multiprocessing import Pool as ThreadPool
         from functools import partial
-        learning_ex = partial(learning, file_list=file_list, split_num=split_num)
+        learning_ex = partial(learning, file_list=file_list, split_num=split_num, partition = partition)
         pool = ThreadPool(processes=1)
 
         results = pool.map(learning_ex, [out_id])
@@ -178,74 +180,80 @@ def process_single_partition(partition, split_num, top_file):
     accuracy_partition = round(accuracy_partition, 4)
     logger.debug(f'The accuracy for partition:{partition}, split_num:{split_num}, records:{len(val_partition)} is {accuracy_partition}')
 
-    path = f'./output/sub/{partition}_{split_num}_{accuracy_partition}.h5'
-
     sub_partition = pd.concat(sub_list).sort_index()
+    path = f'./output/sub/{partition}_{len(sub_partition)}_{split_num}_{accuracy_partition}.h5'
+
     save_result_partition(val_partition, sub_partition, path)
     return path
 
 
 @timed()
-def learning( out_id, file_list, split_num,   ):
+def learning( out_id, file_list, split_num, partition  ):
     train, label, test = get_outid_inf(file_list, out_id)
     logger.debug(f'Get data for out_id:{out_id}, train:{train.shape}, label:{label.shape}, test:{test.shape}')
-    kf = KFold(n_splits=split_num, shuffle=True, random_state=777)
 
-    accuracy_list = []
-    sub_list = []
-    for folder, (train_index, val_index) in enumerate(kf.split(train)):
+    if label.shape[1] == 1:
+        val = pd.DataFrame(1, columns=label.columns, index=train.index)
+        sub =  pd.DataFrame(1, columns=label.columns, index=test.index)
+        return sub, val
+    else:
+        kf = KFold(n_splits=split_num, shuffle=True, random_state=777)
 
-        model = wider_model(train.shape[1], label.shape[1])
-        early_stop = EarlyStopping(monitor='val_loss', verbose=1, patience=50, )
+        accuracy_list = []
+        sub_list = []
+        for folder, (train_index, val_index) in enumerate(kf.split(train)):
 
-        model_file = './output/model/checkpoint.h5'
-        # check_best = ModelCheckpoint(filepath=model_file,
-        #                              monitor='val_loss', verbose=1,
-        #                              save_best_only=True, mode='min')
+            model = wider_model(train.shape[1], label.shape[1])
+            early_stop = EarlyStopping(monitor='val_loss', verbose=1, patience=50, )
 
-        #logger.debug(f'Train:{train.shape}, Label:{label.shape}, folder:{folder}, {val_index}')
+            model_file = f'./output/model/checkpoint_{partition}_{split_num}.h5'
+            # check_best = ModelCheckpoint(filepath=model_file,
+            #                              monitor='val_loss', verbose=1,
+            #                              save_best_only=True, mode='min')
 
-        check_best = ReviewCheckpoint(model_file, folder, train.iloc[val_index], label.iloc[val_index])
-        start = time.time()
-        history = model.fit(train.iloc[train_index], label.iloc[train_index],
-                            validation_data=(train.iloc[val_index], label.iloc[val_index]),
-                            callbacks=[check_best,
-                                       early_stop,
-                                       # reduce,
-                                       ],
-                            batch_size=32,
-                            epochs=100,
-                            )
-        duration = time.time() - start
-        logging.info('cost:%7.2f sec: ===%s' % (duration, f'Fit the out_id({len(train_index)}):{out_id}, folder:{folder}'))
+            #logger.debug(f'Train:{train.shape}, Label:{label.shape}, folder:{folder}, {val_index}')
 
-        from keras import models
-        best_model = models.load_model(model_file)
-        val = train.iloc[val_index]
-        acc = pd.DataFrame(best_model.predict(val), columns=label.columns, index=val.index)
-        accuracy_list.append(acc)
-        #accuracy_rate = np.mean(np.argmax(acc.values, axis=1) == np.argmax(label.values[val_index], axis=1))
-        accuracy_rate = np.mean(acc.idxmax(axis=1) == label.iloc[val_index].idxmax(axis=1))
-        logger.debug(f'Folder:{folder}, The best accuracy for out_id:{out_id} is {round(accuracy_rate,4)}')
+            check_best = ReviewCheckpoint(model_file, folder, train.iloc[val_index], label.iloc[val_index])
+            start = time.time()
+            history = model.fit(train.iloc[train_index], label.iloc[train_index],
+                                validation_data=(train.iloc[val_index], label.iloc[val_index]),
+                                callbacks=[check_best,
+                                           early_stop,
+                                           # reduce,
+                                           ],
+                                batch_size=32,
+                                epochs=100,
+                                )
+            duration = time.time() - start
+            logging.info('cost:%7.2f sec: ===%s' % (duration, f'Fit the out_id({len(train_index)}):{out_id}, folder:{folder}'))
 
-        best_epoch = np.array(history.history['val_loss']).argmin() + 1
-        best_score = np.array(history.history['val_loss']).min()
+            from keras import models
+            best_model = models.load_model(model_file)
+            val = train.iloc[val_index]
+            acc = pd.DataFrame(best_model.predict(val), columns=label.columns, index=val.index)
+            accuracy_list.append(acc)
+            #accuracy_rate = np.mean(np.argmax(acc.values, axis=1) == np.argmax(label.values[val_index], axis=1))
+            accuracy_rate = np.mean(acc.idxmax(axis=1) == label.iloc[val_index].idxmax(axis=1))
+            logger.debug(f'Folder:{folder}, The best accuracy for out_id:{out_id} is {round(accuracy_rate,4)}')
 
-        sub_folder = pd.DataFrame(model.predict(test), columns=label.columns, index=test.index)
-        sub_list.append(sub_folder)
+            best_epoch = np.array(history.history['val_loss']).argmin() + 1
+            best_score = np.array(history.history['val_loss']).min()
 
-        #K.clear_session()
+            sub_folder = pd.DataFrame(model.predict(test), columns=label.columns, index=test.index)
+            sub_list.append(sub_folder)
 
-    val_all = pd.concat(accuracy_list).sort_index()
-    label = label.sort_index()
-    accuracy = np.mean(np.argmax(val_all.values, axis=1) == np.argmax(label.values, axis=1))
-    logger.debug(f'The final accuracy for out_id({len(train)}):{out_id} is <<{round(accuracy,4)}>>')
+            #K.clear_session()
 
-    sub_merge = pd.concat(sub_list)
-    sub_merge.index.name='r_key'
-    sub_mean = sub_merge.reset_index().groupby('r_key').mean()
+        val_all = pd.concat(accuracy_list).sort_index()
+        label = label.sort_index()
+        accuracy = np.mean(np.argmax(val_all.values, axis=1) == np.argmax(label.values, axis=1))
+        logger.debug(f'The final accuracy for out_id({len(train)}):{out_id} is <<{round(accuracy,4)}>>')
 
-    return sub_mean, val_all
+        sub_merge = pd.concat(sub_list)
+        sub_merge.index.name='r_key'
+        sub_mean = sub_merge.reset_index().groupby('r_key').mean()
+
+        return sub_mean, val_all
 
 
 def wider_model(input_dim, output_dim):
@@ -267,8 +275,16 @@ if __name__ == '__main__':
     #logger.debug(label.out_id.head(3))
     # train, test, label = get_outid_inf(file_list, '4A23256745CBA3B0')
     # print(train.shape, test.shape, label.shape)
+    import sys
+    if len(sys.argv)>=2:
+        partition_list  = sys.argv[1:] #['9gp']
+        partition_list = [f'{i}gp' for i in partition_list]
+        logger.debug(f'Partition_list:{partition_list}')
+    else:
+        logger.debug("Need input parittion list")
+
 
 
    # paras = process_partition(['9gp'], 5, top_file=1) #3529
-    paras = process_partition(['9gp'], 5, top_file=2) #3765
+    paras = process_partition(partition_list, 5, top_file=2) #3765
 

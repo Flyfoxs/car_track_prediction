@@ -177,7 +177,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 
     loss, accuracy = cal_loss_for_df(val)
 
-    file_ensemble = f'./output/ensemble/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
+    file_ensemble = f'./output/ensemble/level1/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
     save_df(val, sub, ensemble_test, ensemble_train, file_ensemble)
 
     logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {len(out_id_list)} cars, "
