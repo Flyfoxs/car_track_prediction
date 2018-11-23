@@ -369,6 +369,14 @@ def save_df(val, sub, ensemble_test, ensemble_train,  path):
     return path
 
 
+def save_result_partition(val, sub, path):
+
+
+    val.to_hdf(path, 'val', index=True, )
+    sub.to_hdf(path, 'sub', index=True, )
+    logger.debug(f"Partition result save to path:{path}")
+    return path
+
 
 if __name__ == '__main__':
     df = get_train_with_adjust_position(150)

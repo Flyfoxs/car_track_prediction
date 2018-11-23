@@ -74,7 +74,7 @@ class Cache_File:
 cache =  Cache_File()
 
 import functools
-def file_cache(overwrite=False, type='h5'):
+def file_cache(overwrite=False, type='h5', prefix=None):
     """
     :param time: How long the case can keep, default is 1 week
     :param overwrite: If force overwrite the cache
@@ -87,6 +87,8 @@ def file_cache(overwrite=False, type='h5'):
             mini_args = get_mini_args(args)
             logger.debug(f'fn:{f.__name__}, para:{str(mini_args)}, kw:{str(kwargs)}')
             key = '_'.join([f.__name__, str(mini_args), str(kwargs)])
+            if prefix:
+                key  = '_'.join([prefix, key])
             if overwrite==False:
                 val = cache.readFile(key, type)
             if overwrite==True or val is None :

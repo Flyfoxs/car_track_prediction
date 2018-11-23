@@ -4,21 +4,22 @@ from code_felix.utils_.util_log import *
 
 class ReviewCheckpoint(Callback):
 
-    def __init__(self, folder, val_train, val_label ):
+    def __init__(self, best_file, folder, val_train, val_label ):
         super(ReviewCheckpoint, self).__init__()
         logger.debug(f'val_train:{val_train.shape}, val_label:{val_label.shape} ')
         self.val_train = val_train
         self.val_label = val_label
-        self.accuracy = 0
+        self.accuracy = None
         self.folder = folder
+        self.best_file = best_file
 
 
 
     def on_epoch_end(self, epoch, logs=None):
-        filepath = './output/model/checkpoint.h5'
+        filepath = self.best_file
         val_res = self.model.predict(self.val_train)
         acc = np.mean(np.argmax(val_res, axis=1) == np.argmax(self.val_label.values, axis=1))
-        if acc > self.accuracy:
+        if self.accuracy is None or acc >= self.accuracy:
             self.accuracy = acc
             self.model.save(filepath, overwrite=True)
             logger.debug(f'Folder:{self.folder}, accuracy is:{acc}, epoch:{epoch}')
