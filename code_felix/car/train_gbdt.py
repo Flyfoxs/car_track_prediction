@@ -177,10 +177,10 @@ def gen_sub(file, threshold, gp, model_type, **kw):
 
     loss, accuracy = cal_loss_for_df(val)
 
-    file_ensemble = f'./output/ensemble/level1/{"{:,.5f}".format(loss)}_{model_type}_{threshold}_{args}.h5'
+    file_ensemble = f'./output/ensemble/level1/{"{:,.5f}".format(loss or 0)}_{model_type}_gp{gp}_{threshold}_{args}.h5'
     save_df(val, sub, ensemble_test, ensemble_train, file_ensemble)
 
-    logger.debug(f"=====Loss is {'{:,.5f}'.format(loss)} on {len(out_id_list)} cars, "
+    logger.debug(f"=====Loss is {'{:,.5f}'.format(loss or 0)} on {len(out_id_list)} cars, "
                  f"{len(get_feature_columns(feature_gp))} feature, "
                  f"{len(val)} samples, args:{args}")
 
@@ -207,7 +207,7 @@ def process_df(train, test, threshold, gp, model_type, **kw):
     ensemble_test = []
     car_num = len(test.out_id.drop_duplicates())
     count = 0
-    for out_id in test.out_id.drop_duplicates():
+    for out_id in test.out_id.drop_duplicates(): #['861691702027751', '868260020674744'] : #
         count += 1
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id].copy()
@@ -238,12 +238,15 @@ def process_df(train, test, threshold, gp, model_type, **kw):
         val_list = pd.concat(val_list)
         val_list.set_index('r_key', inplace=True)
     else:
-        val_list = None
+        val_list = pd.DataFrame()
 
     if ensemble_train is None or len(ensemble_train)==0:
-        ensemble_train = pd.DataFrame()
+        ensemble_train = [pd.DataFrame()]
 
-    return predict_list, val_list, pd.concat(ensemble_test), pd.concat(ensemble_train)
+    ensemble_test = pd.concat(ensemble_test)
+    ensemble_train = pd.concat(ensemble_train)
+
+    return predict_list, val_list, ensemble_test, ensemble_train
 
 # def scale_df(train, test):
 #
@@ -329,8 +332,8 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
         logger.debug(f'Val_loss:{val_loss}, accuracy:{accuracy} for out_id:{out_id}')
     else:
         #No split model
-        val_result = None
-        train_result = None
+        val_result = pd.DataFrame()
+        train_result = pd.DataFrame()
 
 
     result_zone_id = test_result.idxmax(axis=1)

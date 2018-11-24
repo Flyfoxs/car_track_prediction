@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,6 +45,7 @@ mini_list = ['861661609024711','2016061820000b' ]
 def get_train_with_distance(train_file):
     from code_felix.car.distance_reduce import getDistance
     train = get_time_extend(train_file)
+    train = get_geo_extend(train)
     train['label'] = 'train'
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
     return train
@@ -99,6 +101,10 @@ def get_time_extend(file):
     df['weekday'] = df.start_time.dt.weekday
     df['weekend'] = df.weekday // 5
     df['hour'] = round(df.start_time.dt.hour +df.start_time.dt.minute/60, 2)
+
+    from code_felix.utils_.util_date import distance_2_monday
+    df['hour_wk'] = df.apply(lambda row: distance_2_monday(row.start_time), axis=1)
+
     if 'end_time' in df:
         df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
     else:
@@ -243,6 +249,8 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     # all = all.set_index('r_key')
     # all.drop(['index'], axis=1, inplace=True)
     all = cal_distance_2_centers(all, train_file, threshold, 4)
+
+    all = get_geo_extend(all)
     # logger.debug(all.head(1))
     return all
 
@@ -288,7 +296,7 @@ def get_zone_inf(out_id, train, test):
 
 def cal_loss_for_df(df):
     from code_felix.car.distance_reduce import getDistance
-    if not df.empty and 'end_zoneid' in df:
+    if df is not None and not df.empty and 'end_zoneid' in df:
         logger.debug(df.columns)
         df['loss_dis'] = df.apply(lambda row: getDistance(row.end_lat, row.end_lon, row.predict_lat, row.predict_lon ) , axis=1)
         df['final_loss'] = df.apply(lambda row: loss_fun(row.loss_dis), axis=1)
@@ -312,16 +320,20 @@ def get_feature_columns(gp='0'):
                    ]
     if gp == '0':
         pass
-    elif gp == 'zoneid':
-        feature_col.extend(['start_zoneid' ])
     elif gp == '1':
-        feature_col.extend(['sz_distance_min', 'sz_distance_max', 'sz_distance_mean', 'sz_distance_sum', ])
+        feature_col.extend(['hour_wk'])
     elif gp == '2':
-        feature_col.extend(['sz_end_zoneid_nunique', 'sz_end_zoneid_count', ])
+        feature_col.extend(['geo4', 'geo5', 'geo6'])
     elif gp == '3':
-        feature_col.append('sz_start_sn_max')
+        feature_col.extend(['geo4'])
+    elif gp == '4':
+        feature_col.extend(['geo5'])
+    elif gp == '5':
+        feature_col.extend(['geo6'])
     elif gp == 'knn':
         feature_col.extend(['dis_center_1', 'dis_center_2', ])
+    elif gp == 'zoneid':
+        feature_col.extend(['start_zoneid'])
     else:
         logger.warning(f"Can not find gp#{gp} in fun#get_feature_columns")
 
@@ -352,16 +364,17 @@ def save_df(val, sub, ensemble_test, ensemble_train,  path):
     if not os.path.exists(os.path.dirname(path)):
         os.mkdir(os.path.dirname(path))
 
-    if 'distance' not in val:
+    if not val.empty and 'distance' not in val:
         val['distance'] = val.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon),
                                       axis=1)
-
-    val.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
+    if not val.empty:
+        val.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
                  ], axis=1, inplace=True, errors='ignore')
+        val.to_hdf(path, 'val', index=True,)
+
     sub.drop([ 'center_lat_0', 'center_lat_1', 'center_lat_2', 'center_lat_3', 'center_lat_4', 'center_lon_0', 'center_lon_1', 'center_lon_2', 'center_lon_3', 'center_lon_4',
                  ], axis=1, inplace=True, errors='ignore')
 
-    val.to_hdf(path, 'val', index=True,)
     sub.to_hdf(path, 'sub', index=True, )
 
     ensemble_test.to_hdf(path, 'ensemble_test', index=True, )
@@ -386,6 +399,16 @@ def save_result_partition(val, sub, path):
 
     logger.debug(f"Partition result save to path:{path}")
     return path
+
+@timed()
+def get_geo_extend(df):
+    import Geohash as geo
+    #geo.encode(42.6, -5.6, precision=6)
+    for i in [4, 5, 6]:
+        df[f'geo{i}'] = \
+            df.apply(lambda row: geo.encode(float(row.start_lat), float(row.start_lon), precision=i), axis=1)
+        df[f'geo{i}'] = pd.Categorical(df[f'geo{i}']).codes
+    return df
 
 
 if __name__ == '__main__':

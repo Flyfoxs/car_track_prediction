@@ -115,11 +115,16 @@ def shift_month_4_csm(range_to,shift):
     else:
         return range_to
 
+
+
 def distance_2_monday(date):
+    import pandas as pd
     from datetime import timedelta
-    date = convert_date(date, type='date' )
-    monday = convert_monday(date)
-    gap = (date - monday)//timedelta(hours=1)
+    monday = convert_monday(date).date()
+    # print(type(date), type(monday))
+    # print(date, monday)
+    gap = (pd.to_datetime(date) - pd.to_datetime(monday)) // timedelta(hours=1)
+    # print(gap)
     return gap
 
 

@@ -11,13 +11,16 @@ if __name__ == '__main__':
     #             for feature_gp in [0]:
     #                 gen_sub(sub, threshold, 0, 'rf', max_depth=deep, num_round=100)
 
+    import sys
+    if len(sys.argv) > 1 :
+        feature_gp_list = sys.argv[1:]
+    else:
+        feature_gp_list = [0]
 
     for threshold in [500]:
-
             for deep in [4]:
-                for feature_gp in [0]:
-                    for split_num in [5, 9, 10]:
-
+                for feature_gp in feature_gp_list:
+                    for split_num in [1, 5]:
                         for sub in sorted([
                             #'3gp237',
                             # '4gp95',
