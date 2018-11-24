@@ -15,33 +15,26 @@ if __name__ == '__main__':
     # pattern = re.compile(r'.*43959.*h5$')
 
     path_list =[
-        # '0.56458_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=9gp=582.h5',
-        # '0.49631_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=8gp=556.h5',
-        # '0.46405_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=7gp=558.h5',
-        # '0.42769_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=6gp=580.h5',
-        # '0.40778_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=5gp=593.h5',
-        # '0.39248_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=4gp=521.h5',
-        # '0.37407_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=3gp=627.h5',
-        # '0.34706_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=2gp=558.h5',
-        # '0.29541_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=1gp=604.h5',
-        # '0.20800_rf_500_kwmax_depth4num_round100split_num3model_typerfgp0threshold500filenew=0gp=638.h5',
-
-        '0.20596_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=0gp=638.h5',
-        '0.29345_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=1gp=604.h5',
-        '0.34455_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=2gp=558.h5',
-        '0.37130_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=3gp=627.h5',
-        '0.38894_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=4gp=521.h5',
-        '0.40483_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=5gp=593.h5',
-
-        '0.42416_rf_500_kwmax_depth4num_round150split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
-        '0.46160_rf_500_kwmax_depth4num_round150split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
-        '0.49217_rf_500_kwmax_depth4num_round150split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
-        '0.56052_rf_500_kwmax_depth4num_round150split_num5model_typerfgp0threshold500filenew=9gp=582.h5',
-
-        # '0.42419_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
-        # '0.46175_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
-        # '0.49267_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
         # '0.56076_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=9gp=582.h5',
+        # '0.49267_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
+        # '0.46175_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
+        # '0.42419_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
+        # '0.40483_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=5gp=593.h5',
+        # '0.38894_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=4gp=521.h5',
+        # '0.37130_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=3gp=627.h5',
+        # '0.34455_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=2gp=558.h5',
+        # '0.29345_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=1gp=604.h5',
+        # '0.20596_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=0gp=638.h5',
+        '0.55944_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=9gp=582.h5',
+        '0.49107_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=8gp=556.h5',
+        '0.46018_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=7gp=558.h5',
+        '0.42350_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=6gp=580.h5',
+        '0.40405_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=5gp=593.h5',
+        '0.38790_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=4gp=521.h5',
+        '0.36977_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=3gp=627.h5',
+        '0.34300_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=2gp=558.h5',
+        '0.29175_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=1gp=604.h5',
+        '0.20490_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=0gp=638.h5',
     ]
 
     path_list = [os.path.join(rootdir, item) for item in path_list]

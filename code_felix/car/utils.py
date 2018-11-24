@@ -370,10 +370,20 @@ def save_df(val, sub, ensemble_test, ensemble_train,  path):
 
 
 def save_result_partition(val, sub, path):
+    if val is not None:
+        train = get_time_extend(train_file)
+        train = train[['r_key', 'out_id']]
+        val = pd.merge(val, train, on='r_key', how='left')
+        val.to_hdf(path, 'val', index=True, )
 
+    if sub is not None:
+        test = get_time_extend(test_file)
+        test = test[['r_key', 'out_id']]
+        if 'r_key' not in sub:
+            sub = sub.reset_index()
+        sub = pd.merge(sub, test, on='r_key', how='left')
+        sub.to_hdf(path, 'sub', index=True, )
 
-    val.to_hdf(path, 'val', index=True, )
-    sub.to_hdf(path, 'sub', index=True, )
     logger.debug(f"Partition result save to path:{path}")
     return path
 

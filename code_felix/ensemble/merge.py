@@ -8,23 +8,29 @@ def get_file_name(file_list, comments=''):
     return f'./output/merge_{comments}_{file}.csv'
 
 if __name__ == '__main__':
-    rootdir = './output/ensemble/'
+    rootdir = './output/ensemble/level1/'
     list = os.listdir(rootdir)
     # path_list = sorted(list, reverse=True)
     # import re
     # pattern = re.compile(r'.*43959.*h5$')
 
     path_list =[
-        '0.58992_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=9gp=582.h5',
-        '0.52281_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=8gp=556.h5',
-        '0.49089_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=7gp=558.h5',
-        '0.45590_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=6gp=580.h5',
-        '0.43673_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=5gp=593.h5',
-        '0.42054_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=4gp=521.h5',
-        '0.40179_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=3gp=627.h5',
-        '0.37475_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=2gp=558.h5',
-        '0.32143_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=1gp=604.h5',
-        '0.22881_knn_500_kwnum_round100split_num3model_typeknngpknnthreshold500filenew=0gp=638.h5',
+
+        '0.20596_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=0gp=638.h5',
+        '0.29345_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=1gp=604.h5',
+        '0.34455_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=2gp=558.h5',
+        '0.37130_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=3gp=627.h5',
+        '0.38894_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=4gp=521.h5',
+        '0.40405_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=5gp=593.h5',
+        '0.40483_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=5gp=593.h5',
+        '0.42350_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=6gp=580.h5',
+        '0.42419_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
+        '0.46018_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=7gp=558.h5',
+        '0.46175_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
+        '0.49107_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=8gp=556.h5',
+        '0.49267_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
+        '0.55944_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=9gp=582.h5',
+        '0.56076_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=9gp=582.h5',
 
     ]
 
