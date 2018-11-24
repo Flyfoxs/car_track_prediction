@@ -148,7 +148,7 @@ def process_single_partition(partition, split_num, top_file):
     get_outid_inf(file_list)
     out_id_total = len(out_id_list.index)
     i = 0
-    for out_id in ['868260020955218', '891691612019981'] : #out_id_list.index :
+    for out_id in out_id_list.index : #['868260020955218', '891691612019981']
         i += 1
         # Start a new process to avoid the memory leak in keras
         from multiprocessing import Pool as ThreadPool
@@ -169,9 +169,9 @@ def process_single_partition(partition, split_num, top_file):
     logger.debug(f'{type(val_partition.idxmax(axis=1))}, {type(label.end_zoneid)}')
     logger.debug(f'{val_partition.idxmax(axis=1).shape}, {label.end_zoneid.loc[val_partition.index].shape}')
 
-    logger.debug(val_partition.idxmax(axis=1)[:20])
+    #logger.debug(val_partition.idxmax(axis=1)[:20])
 
-    logger.debug(label.end_zoneid[:20])
+    #logger.debug(label.end_zoneid[:20])
 
     logger.debug(f'{val_partition.idxmax(axis=1).dtype}, {label.end_zoneid.dtype}')
 
@@ -181,7 +181,7 @@ def process_single_partition(partition, split_num, top_file):
     logger.debug(f'The accuracy for partition:{partition}, split_num:{split_num}, records:{len(val_partition)} is {accuracy_partition}')
 
     sub_partition = pd.concat(sub_list).sort_index()
-    path = f'./output/sub/{partition}_{len(sub_partition)}_{split_num}_{accuracy_partition}.h5'
+    path = f'./output/ensemble/level2/st_{partition}_{out_id_total}_{len(sub_partition)}_{split_num}_{accuracy_partition}.h5'
 
     save_result_partition(val_partition, sub_partition, path)
     return path
@@ -195,6 +195,8 @@ def learning( out_id, file_list, split_num, partition  ):
     if label.shape[1] == 1:
         val = pd.DataFrame(1, columns=label.columns, index=train.index)
         sub =  pd.DataFrame(1, columns=label.columns, index=test.index)
+        logger.debug(f'The final accuracy for out_id({len(train)}):{out_id} is 1, only 1 label')
+
         return sub, val
     else:
         kf = KFold(n_splits=split_num, shuffle=True, random_state=777)
