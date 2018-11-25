@@ -85,8 +85,9 @@ def get_mode(out_id, df, df_val=None, model_type='lgb', **kw):
         feature_gp = 'knn'
 
     X, Y = get_features(out_id, df)
-    val_X, val_Y = get_features(out_id, df_val)
+
     if model_type == 'lgb':
+        val_X, val_Y = get_features(out_id, df_val)
         model = train_model_lgb(X, Y,val_X, val_Y, **kw)
     elif model_type == 'rf':
         model = train_model_rf(X, Y, **kw)
@@ -205,9 +206,10 @@ def process_df(train, test, threshold, gp, model_type, **kw):
     val_list = []
     ensemble_train = []
     ensemble_test = []
-    car_num = len(test.out_id.drop_duplicates())
+    out_id_list = test.out_id.drop_duplicates()#.sample(20)
+    car_num = len(out_id_list)
     count = 0
-    for out_id in test.out_id.drop_duplicates(): #['861691702027751', '868260020674744'] : #
+    for out_id in out_id_list: #['861691702027751', '868260020674744'] : #
         count += 1
         single_test = test.loc[test.out_id == out_id].copy()
         single_train = train.loc[train.out_id == out_id].copy()
@@ -292,7 +294,8 @@ def predict_outid(kw, model_type,  test, train, split_num =5):
         classes_num = len(split_train.end_zoneid.drop_duplicates())
         if classes_num == 1:
             test_propability = np.ones((len(test), 1))
-            val_propability = np.ones((len(split_val), 1))
+            if split_num > 1:
+                val_propability = np.ones((len(split_val), 1))
         else:
             # logger.debug(f"Begin to train the model for car:{out_id}, records:{len(test_mini)}" )
 

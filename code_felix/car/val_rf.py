@@ -20,7 +20,7 @@ if __name__ == '__main__':
     for threshold in [500]:
             for deep in [4]:
                 for feature_gp in feature_gp_list:
-                    for split_num in [1, 5]:
+                    for split_num in [1]:
                         for sub in sorted([
                             #'3gp237',
                             # '4gp95',
