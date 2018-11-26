@@ -90,6 +90,7 @@ def get_time_extend(file):
     except:
         df = pd.read_csv(file, delimiter=',', parse_dates=['start_time'],   dtype=test_dict)
 
+    #df = df[df.out_id=='2016061820000b']
 
     df.out_id = df.out_id.astype('str')
     #df = df[df.out_id.isin(mini_list) ]
@@ -320,16 +321,9 @@ def get_feature_columns(gp='0'):
                    ]
     if gp == '0':
         pass
-    elif gp == '1':
-        feature_col.extend(['hour_wk'])
-    elif gp == '2':
-        feature_col.extend(['geo4', 'geo5', 'geo6'])
-    elif gp == '3':
-        feature_col.extend(['geo4'])
-    elif gp == '4':
-        feature_col.extend(['geo5'])
-    elif gp == '5':
-        feature_col.extend(['geo6'])
+    elif gp.isnumeric():
+        gp = int(gp)
+        feature_col.extend([f'geo_rd_c{gp}_{i}' for i in range(gp)])
     elif gp == 'knn':
         feature_col.extend(['dis_center_1', 'dis_center_2', ])
     elif gp == 'zoneid':
@@ -404,11 +398,65 @@ def save_result_partition(val, sub, path):
 def get_geo_extend(df):
     import Geohash as geo
     #geo.encode(42.6, -5.6, precision=6)
+
+    if 'end_lat' in df:
+        for i in [4, 5, 6]:
+            df[f'geo{i}_cat_end'] = \
+                df.apply(lambda row: geo.encode(float(row.end_lat), float(row.end_lon), precision=i), axis=1)
+            df[f'geo{i}_end'] = pd.Categorical(df[f'geo{i}_cat_end']).codes
+
     for i in [4, 5, 6]:
-        df[f'geo{i}'] = \
+        df[f'geo{i}_cat'] = \
             df.apply(lambda row: geo.encode(float(row.start_lat), float(row.start_lon), precision=i), axis=1)
-        df[f'geo{i}'] = pd.Categorical(df[f'geo{i}']).codes
+        df[f'geo{i}'] = pd.Categorical(df[f'geo{i}_cat']).codes
+
+
     return df
+
+
+def reduce_geo(n_components=10, precision=5, ):
+    level = f'geo{precision}_cat'
+
+    logger.debug(f'SVD base on {train_file}')
+    train = get_train_with_distance(train_file)
+
+    test = get_test_with_adjust_position(500, train_file, test_file)
+
+    test_out = test[['out_id', level, 'hour_wk']]
+    test_out.hour_wk = 'out_' + test_out.hour_wk.astype(str)
+
+    car_out = train[['out_id', level, 'hour_wk']]
+    car_out.hour_wk = 'out_' + car_out.hour_wk.astype(str)
+
+    car_in = train[['out_id', f'{level}_end', 'hour_wk']]
+    car_in.hour_wk = 'in_' + car_in.hour_wk.astype(str)
+    car_in.columns = ['out_id', level, 'hour_wk']
+
+    car_in_out_raw = pd.concat([test_out, car_in, car_out])
+
+    car_in_out = car_in_out_raw.groupby([level, 'hour_wk']).agg({'out_id': ['count', 'nunique']})
+
+    car_in_out = flat_columns(car_in_out)
+
+    car_in_out = car_in_out.reset_index()
+
+    from sklearn.utils.extmath import randomized_svd
+
+    svd_input = car_in_out.pivot(index=level, columns='hour_wk', values='out_id_count')
+
+    svd_input.fillna(0, inplace=True)
+
+    U, Sigma, VT = randomized_svd(svd_input.values,
+                                  n_components=int(n_components),
+                                  n_iter=5,
+                                  random_state=None)
+    columns = [f'geo_rd_c{n_components}_{i}' for i in range(U.shape[1])]
+    reduce = pd.DataFrame(U, index=svd_input.index, columns=columns)
+
+    reduce.index.name=level
+
+    return reduce.reset_index()
+
 
 
 if __name__ == '__main__':

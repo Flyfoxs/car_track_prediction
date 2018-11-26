@@ -27,6 +27,10 @@ def sort_address_and_cal_gap(train_file, test_file):
     train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
     test = pd.read_csv(test_file, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
+    #train = train[train.out_id=='2016061820000b']
+    #test = test[test.out_id == '2016061820000b']
+
+
     df_list = [train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
                test[['out_id', 'start_lat', 'start_lon']],
@@ -381,7 +385,7 @@ def get_center_address_need_reduce_for_one_out_id(out_id_mini,threshold ):
         threshold = distance_mean // threshold
         threshold = max(min_gap,threshold)
         threshold = min(max_gap,threshold)
-    logger.debug(f'centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
+    #logger.debug(f'centerid need to reduce, out_id:{out_id_mini.at[0,"out_id"]}, threshold:{threshold}')
 
 
     lon_threshold = 0.00001 * threshold * 2

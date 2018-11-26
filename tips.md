@@ -41,6 +41,10 @@
 * reduce to until only n address for one out_id
 * Kmeans reduce address to diff group
 
+* Reduce address by geohash
+
+* Remove address by geohash
+
 # Classfy
 * Top 10 multiple class:DC Tree
 * Top 10 KNN

@@ -169,6 +169,11 @@ def gen_sub(file, threshold, gp, model_type, **kw):
     train = get_train_with_adjust_position(threshold, cur_train)
     test = get_test_with_adjust_position(threshold, cur_train, cur_test)
 
+    n_components = gp
+    geo_reduce = reduce_geo(n_components)
+    train = pd.merge(train, geo_reduce, how='left')
+    test = pd.merge(test, geo_reduce, how='left')
+
     out_id_list = test.out_id.drop_duplicates()
 
     train = train[train.out_id.isin(out_id_list)]

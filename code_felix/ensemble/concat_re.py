@@ -69,7 +69,7 @@ test = get_time_extend(test_file)
 sub_df = pd.DataFrame(index=test.r_key).join(fina_sub)
 
 sub_df.columns = ['end_lat','end_lon']
-path = f"./output/sub/st_sub_{express.replace('*','_')}.csv"
+path = f"./output/sub/concat_sub_{express.replace('*','_')}.csv"
 sub_df.to_csv(path)
 
 logger.debug(f'Save sub to file:{path}')
