@@ -31,9 +31,9 @@ def sort_address_and_cal_gap(train_file, test_file):
     #test = test[test.out_id == '2016061820000b']
 
 
-    df_list = [train[['out_id', 'start_lat', 'start_lon']],
+    df_list = [#train[['out_id', 'start_lat', 'start_lon']],
                train[['out_id', 'end_lat', 'end_lon']],
-               test[['out_id', 'start_lat', 'start_lon']],
+               #test[['out_id', 'start_lat', 'start_lon']],
                ]
 
     for df in df_list:

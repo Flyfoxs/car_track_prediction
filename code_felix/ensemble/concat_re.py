@@ -11,7 +11,7 @@ def read_sub(file):
     if 'predict_lat' in sub:
         sub.reset_index(inplace=True)
         sub = sub[['r_key', 'predict_lat', 'predict_lon']]
-        logger.debug(sub.shape)
+        logger.debug(f'{file}:{sub.shape}')
         return sub
     else:
         logger.debug(f'=======0\n{sub.head()}')

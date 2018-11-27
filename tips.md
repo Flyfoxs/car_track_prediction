@@ -45,6 +45,13 @@
 
 * Remove address by geohash
 
+* zoneid category is small
+
+* zoneid type base on hot position
+* Cal poi to the center, and count the density
+* Data enhance(Duplicate hot, fill missing data)
+* latest data has high priority
+
 # Classfy
 * Top 10 multiple class:DC Tree
 * Top 10 KNN
@@ -64,3 +71,18 @@ home/code/result.csv
 
 #TODO
 pivot_table vs pivot
+
+
+1) Remove low frequency data
+2) Stable out_id with less type
+3) Stable zoneid geo4
+4) 
+
+
+
+zoneid reduce step:
+1) zoneid category type is small
+2) break down geo7 already have many sample
+3) 
+
+

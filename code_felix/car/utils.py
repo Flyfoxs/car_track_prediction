@@ -129,18 +129,18 @@ def adjust_position_2_center(threshold, df, train_file):
 
     #logger.debug(zoneid[zoneid.out_id=='2016061820000b'].values)
 
-    all = pd.merge(df, zoneid, how='left', on=['out_id', 'start_lat', 'start_lon'] )
-    check_exception(all ,'r_key')
-
-    all.start_zoneid = all.start_zoneid.astype(int)
+    # all = pd.merge(df, zoneid, how='left', on=['out_id', 'start_lat', 'start_lon'] )
+    # check_exception(all ,'r_key')
+    #
+    # all.start_zoneid = all.start_zoneid.astype(int)
 
     if 'end_time' in df:
         zoneid.columns = ['out_id', 'end_lat', 'end_lon', 'end_lat_adj', 'end_lon_adj', 'end_zoneid','end_sn']
-        all = pd.merge(all, zoneid, how='left',on=['out_id', 'end_lat', 'end_lon'] )
-        check_exception(all, 'r_key')
-        all.end_zoneid = all.end_zoneid.astype(int)
+        df = pd.merge(df, zoneid, how='left',on=['out_id', 'end_lat', 'end_lon'] )
+        check_exception(df, 'r_key')
+        df.end_zoneid = df.end_zoneid.astype(int)
 
-    return all
+    return df
 
 
 @file_cache(overwrite=False)
@@ -152,7 +152,7 @@ def get_train_with_adjust_position(threshold, train_file):
     # all = all.set_index('r_key')
     #all.drop(['index'], axis=1, inplace=True)
 
-    all = cal_distance_2_centers(all, train_file, threshold, 4)
+    # all = cal_distance_2_centers(all, train_file, threshold, 4)
     return all
 
 @timed()
@@ -249,7 +249,7 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     all = fill_out_id_attr( train_file, all,)
     # all = all.set_index('r_key')
     # all.drop(['index'], axis=1, inplace=True)
-    all = cal_distance_2_centers(all, train_file, threshold, 4)
+    # all = cal_distance_2_centers(all, train_file, threshold, 4)
 
     all = get_geo_extend(all)
     # logger.debug(all.head(1))
@@ -317,7 +317,7 @@ def get_feature_columns(gp='0'):
                    'start_lat', 'start_lon',
                    'hour',
                    #'start_zoneid',
-                   'dis_center_0', #'dis_center_1','dis_center_2'
+                   #'dis_center_0', #'dis_center_1','dis_center_2'
                    ]
     if gp == '0':
         pass
