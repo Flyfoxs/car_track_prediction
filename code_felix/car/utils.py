@@ -83,6 +83,7 @@ def fill_end_zone_attr(df=None):
 
 
 @timed()
+@lru_cache()
 @file_cache()
 def get_time_geo_extend(file):
 

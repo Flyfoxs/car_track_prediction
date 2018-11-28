@@ -267,6 +267,26 @@ def process_df(train, test, threshold, gp, model_type, **kw):
 #     test[col_list] = scale.transform(test[col_list])
 #     return  train, test
 
+def reduce_train_sample(train, precision):
+
+    old_len = len(train)
+    out_id = train.out_id.values[0]
+    geo_filter  =  get_time_geo_extend(test_file)
+    geo_filter = geo_filter[geo_filter.out_id==out_id][f'geo{precision}_cat'].drop_duplicates().values
+    import geohash
+    geo_filter_expend  = list(map(lambda hash: geohash.expand(hash), geo_filter))
+
+    geo_filter_expend = sum(geo_filter_expend,[])
+
+    geo_filter_expend = list(set(geo_filter_expend))
+
+    train_new = train[train[f'geo{precision}_cat'].isin(geo_filter_expend)]
+    if train_new.empty:
+        train_new = train
+        logger.debug(f'Can not find match address from training for current precision:{precision}')
+    logger.debug(f'Reduce the train sample from {old_len} to {len(train_new)}, geohash:{len(geo_filter)}/{len(geo_filter_expend)}')
+    return train_new
+
 @timed()
 def predict_outid(kw, model_type,  test, train, split_num =5):
     #logger.debug(len(train))
