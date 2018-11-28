@@ -44,8 +44,8 @@ mini_list = ['861661609024711','2016061820000b' ]
 @file_cache(overwrite=False)
 def get_train_with_distance(train_file):
     from code_felix.car.distance_reduce import getDistance
-    train = get_time_extend(train_file)
-    train = get_geo_extend(train)
+    train = get_time_geo_extend(train_file)
+
     train['label'] = 'train'
     train['distance'] = train.apply(lambda row: getDistance(row.start_lat, row.start_lon, row.end_lat, row.end_lon), axis=1)
     return train
@@ -83,7 +83,8 @@ def fill_end_zone_attr(df=None):
 
 
 @timed()
-def get_time_extend(file):
+@file_cache()
+def get_time_geo_extend(file):
 
     try:
         df = pd.read_csv(file, delimiter=',' , parse_dates=['start_time', 'end_time'], dtype=train_dict)
@@ -110,6 +111,8 @@ def get_time_extend(file):
         df['duration'] = (df['end_time'] - df['start_time']) / np.timedelta64(1, 'D')
     else:
         df['duration'] = None
+
+    df = get_geo_extend(df)
 
     return df
 
@@ -234,7 +237,7 @@ def get_centers_add(train_file, threshold, topn):
 @file_cache(overwrite=False)
 def get_test_with_adjust_position(threshold, train_file, test_file):
 
-    test = get_time_extend(test_file)
+    test = get_time_geo_extend(test_file)
 
     real_out_id_list = get_score_outid().out_id
     logger.debug(f'There are {len(real_out_id_list)} outid in submission test file')
@@ -251,7 +254,6 @@ def get_test_with_adjust_position(threshold, train_file, test_file):
     # all.drop(['index'], axis=1, inplace=True)
     # all = cal_distance_2_centers(all, train_file, threshold, 4)
 
-    all = get_geo_extend(all)
     # logger.debug(all.head(1))
     return all
 
@@ -337,7 +339,7 @@ def get_feature_columns(gp='0'):
 
 
 def get_score_outid():
-    df = get_time_extend('./input/test_new.csv').groupby('out_id').out_id.count()
+    df = get_time_geo_extend('./input/test_new.csv').groupby('out_id').out_id.count()
     df.name = 'count'
     df = df.to_frame().reset_index()
     return df.sort_values('count', ascending=False)
@@ -378,13 +380,13 @@ def save_df(val, sub, ensemble_test, ensemble_train,  path):
 
 def save_result_partition(val, sub, path):
     if val is not None:
-        train = get_time_extend(train_file)
+        train = get_time_geo_extend(train_file)
         train = train[['r_key', 'out_id']]
         val = pd.merge(val, train, on='r_key', how='left')
         val.to_hdf(path, 'val', index=True, )
 
     if sub is not None:
-        test = get_time_extend(test_file)
+        test = get_time_geo_extend(test_file)
         test = test[['r_key', 'out_id']]
         if 'r_key' not in sub:
             sub = sub.reset_index()
@@ -400,12 +402,12 @@ def get_geo_extend(df):
     #geo.encode(42.6, -5.6, precision=6)
 
     if 'end_lat' in df:
-        for i in [4, 5, 6]:
+        for i in [4, 5, 6, 7, 8, 9]:
             df[f'geo{i}_cat_end'] = \
                 df.apply(lambda row: geo.encode(float(row.end_lat), float(row.end_lon), precision=i), axis=1)
             df[f'geo{i}_end'] = pd.Categorical(df[f'geo{i}_cat_end']).codes
 
-    for i in [4, 5, 6]:
+    for i in [4, 5, 6, 7, 8, 9]:
         df[f'geo{i}_cat'] = \
             df.apply(lambda row: geo.encode(float(row.start_lat), float(row.start_lon), precision=i), axis=1)
         df[f'geo{i}'] = pd.Categorical(df[f'geo{i}_cat']).codes

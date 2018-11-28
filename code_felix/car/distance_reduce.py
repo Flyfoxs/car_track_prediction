@@ -25,7 +25,7 @@ def cal_distance_gap_and_zoneid(train, test, threshold):
 def sort_address_and_cal_gap(train_file, test_file):
     from code_felix.car.utils import train_dict, test_dict
     train = pd.read_csv(train_file, delimiter=',', parse_dates=['start_time'], dtype=train_dict)
-    test = pd.read_csv(test_file, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
+   # test = pd.read_csv(test_file, usecols=test_columns, delimiter=',', parse_dates=['start_time'], dtype=test_dict)
 
     #train = train[train.out_id=='2016061820000b']
     #test = test[test.out_id == '2016061820000b']
@@ -437,6 +437,31 @@ def get_home_company():
     train = get_train_with_adjust_position(200, train_file, test_file)
 
 
+@lru_cache()
+#@file_cache()
+def get_outid_geo_summary():
+    from code_felix.ensemble.stacking import train_file, test_file
+    train_geo = get_time_geo_extend(train_file)
+    geo_sum = train_geo.groupby('out_id').agg({'geo4_cat': 'nunique', 'geo5_cat': 'nunique',
+                                               'geo6_cat': 'nunique', 'geo7_cat': 'nunique',
+                                               'geo8_cat': 'nunique', 'geo9_cat': 'nunique',
+                                               'geo4_cat_end': 'nunique', 'geo5_cat_end': 'nunique',
+                                               'geo6_cat_end': 'nunique', 'geo7_cat_end': 'nunique',
+                                               'geo8_cat_end': 'nunique', 'geo9_cat_end': 'nunique',
+                                               'r_key': 'count'})
+    geo_sum.rename(columns={'r_key': 'count'}, inplace=True, )
+    geo_sum['gp'] = pd.cut(geo_sum.geo6_cat_end, [0, 20, 40, 60, 80, 100, 900]).cat.codes
+    geo_sum.columns = [f'train_{col}' for col in geo_sum.columns]
+
+    test_geo = get_time_geo_extend(test_file)
+    test_geo_sum = test_geo.groupby('out_id').agg({'geo4_cat': 'nunique', 'geo5_cat': 'nunique',
+                                                   'geo6_cat': 'nunique', 'geo7_cat': 'nunique',
+                                                   'geo8_cat': 'nunique', 'geo9_cat': 'nunique',
+                                                   'r_key': 'count'})
+    test_geo_sum.rename(columns={'r_key': 'count'}, inplace=True, )
+    test_geo_sum.columns = [f'test_{col}' for col in test_geo_sum.columns]
+
+    return pd.concat([geo_sum, test_geo_sum], axis=1)
 
 
 if __name__ == '__main__':

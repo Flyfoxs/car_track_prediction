@@ -65,11 +65,11 @@ fina_sub = pd.concat(sub_list)
 fina_sub.set_index('r_key', inplace=True)
 print(fina_sub.shape)
 
-test = get_time_extend(test_file)
+test = get_time_geo_extend(test_file)
 sub_df = pd.DataFrame(index=test.r_key).join(fina_sub)
 
 sub_df.columns = ['end_lat','end_lon']
-path = f"./output/sub/concat_sub_{express.replace('*','_')}.csv"
+path = f"./output/sub/concat_sub_re{express.replace('*','_')}.csv"
 sub_df.to_csv(path)
 
 logger.debug(f'Save sub to file:{path}')

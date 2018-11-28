@@ -84,5 +84,5 @@ zoneid reduce step:
 1) zoneid category type is small
 2) break down geo7 already have many sample
 3) 
-
+4) Narrow down by geo*
 

@@ -122,9 +122,37 @@ def split_2_new():
 
         # logger.debug(len(validate), len(validate.out_id.drop_duplicates()))
 
+def split_2_geo():
+    train = pd.read_csv('./input/del/train_new.csv', delimiter=',', dtype=train_dict)
+    test = pd.read_csv('./input/del/test_new.csv', delimiter=',', dtype=test_dict)
+
+    from code_felix.ensemble.stacking import train_file
+    train_geo = get_time_geo_extend(train_file)
+    geo_sum = train_geo.groupby('out_id').agg({'geo4_cat_end': 'nunique', 'geo5_cat_end': 'nunique',
+                                           'geo6_cat_end': 'nunique', 'geo7_cat_end': 'nunique',
+                                           'geo8_cat_end': 'nunique', 'geo9_cat_end': 'nunique',
+                                           'r_key': 'count'})
+
+    gp = geo_sum.sort_values(['geo6_cat_end', 'geo7_cat_end', 'geo8_cat_end', 'geo9_cat_end'], ascending=True)
+
+    cat = pd.cut(gp.geo6_cat_end, [0, 20, 40, 60, 80, 100, 900])
+    cat.name = 'cat_name'
+    cat = cat.to_frame().reset_index()
+
+    for sn, (gp_name, outid_list) in enumerate(cat.groupby('cat_name')):
+        gp_count = len(outid_list)
+
+        gp_train = train[train.out_id.isin(outid_list.out_id) ]
+        gp_test = test[test.out_id.isin(outid_list.out_id) ]
+
+        train_file = f'{DATA_DIR}/train_new={sn}geo={gp_count}.csv'
+        test_file = f'{DATA_DIR}/test_new={sn}geo={gp_count}.csv'
+
+        gp_train.to_csv(train_file, index=None)
+        gp_test.to_csv(test_file, index=None)
 
 
 
 if __name__ == '__main__':
-    split_2_new()
+    split_2_geo()
     #split_2_file()

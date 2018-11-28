@@ -75,7 +75,7 @@ if __name__ == '__main__':
     sub_df = pd.concat(sub_list)[['predict_lat', 'predict_lon']]
     sub_df.columns = ['end_lat', 'end_lon']
     sub_df.index.name = 'r_key'
-    test = get_time_extend('./input/test_new.csv')
+    test = get_time_geo_extend('./input/test_new.csv')
     sub_df = pd.DataFrame(index=test.r_key).join(sub_df)
 
     file_name = get_file_name(file_list, new_loss)
