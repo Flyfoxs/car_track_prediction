@@ -49,7 +49,9 @@ list = os.listdir(rootdir)
 # pattern = re.compile(r'.*43959.*h5$')
 
 path_list = [
-'./output/ensemble/level1/0.00000_rf_gp0_350_kwmax_depth4num_round100split_num1model_typerfgp0threshold350filenew=0geo=423.h5',
+#'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1precision4model_typerfgp0threshold400filenew=3geo=1026.h5',
+#'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1precision5model_typerfgp0threshold400filenew=5geo=148.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_200_kwmax_depth4num_round100split_num1model_typerfgp0threshold200filenew=0geo=423.h5',
 './output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=0geo=423.h5',
 
 './output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=1geo=1801.h5',
