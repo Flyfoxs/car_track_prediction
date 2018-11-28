@@ -49,33 +49,29 @@ list = os.listdir(rootdir)
 # pattern = re.compile(r'.*43959.*h5$')
 
 path_list = [
-
-    './output/ensemble/level2/st_0gp_536_6302_5.h5',
-    './output/ensemble/level2/st_1gp_527_5912_5.h5',
-    './output/ensemble/level2/st_2gp_491_5654_5.h5',
-    './output/ensemble/level2/st_3gp_539_6004_5.h5',
-    './output/ensemble/level2/st_4gp_442_5071_5.h5',
-    './output/ensemble/level2/st_5gp_523_6143_5.h5',
-    './output/ensemble/level2/st_6gp_488_5531_5.h5',
-    './output/ensemble/level2/st_7gp_490_5661_5.h5',
-    './output/ensemble/level2/st_8gp_492_5563_5.h5',
-    './output/ensemble/level2/st_9gp_505_6256_5.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=0geo=423.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=1geo=1801.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=2geo=2101.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=3geo=1026.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=4geo=318.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=5geo=148.h5',
 
 ]
 
-sub_list = []
+fina_sub = pd.DataFrame()
+
 for file in path_list:
     sub = read_sub(file)
-    sub_list.append(sub)
-fina_sub = pd.concat(sub_list)
-fina_sub.set_index('r_key', inplace=True)
+    sub.set_index('r_key', inplace=True)
+    fina_sub = fina_sub.combine_first(sub)
+
 print(fina_sub.shape)
 
-test = get_time_extend(test_file)
+test = get_time_geo_extend(test_file)
 sub_df = pd.DataFrame(index=test.r_key).join(fina_sub)
 
 sub_df.columns = ['end_lat','end_lon']
-path = './output/sub/st_sub.csv'
+path = './output/sub/concat_sub_.csv'
 sub_df.to_csv(path)
 
 logger.debug(f'Save sub to file:{path}')
