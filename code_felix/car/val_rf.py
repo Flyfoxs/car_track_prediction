@@ -17,17 +17,17 @@ if __name__ == '__main__':
     else:
         feature_gp_list = [0]
 
-    for threshold in [400]:
-            for deep in [4]:
+
+    for deep in [4]:
                     for feature_gp in feature_gp_list:
                         for split_num in [1]:
-                            for sub in sorted([
-                                #'new=0geo=423',
-                                # 'new=1geo=1801',
-                                # 'new=2geo=2101',
-                                'new=3geo=1026',
-                                # 'new=4geo=318',
-                                # 'new=5geo=148',
+                            for threshold, sub in sorted([
+                                    ('new=0geo=423',  200),
+                                    ('new=1geo=1801', 300),
+                                    ('new=2geo=2101', 400),
+                                    ('new=3geo=1026', 450)
+                                    ('new=4geo=318', 400),
+                                    ('new=5geo=148', 400),
                             ], reverse=True):
                                  gen_sub(sub, threshold, feature_gp, 'rf', max_depth=deep, num_round=100, split_num= split_num)
 
