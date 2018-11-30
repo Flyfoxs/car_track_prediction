@@ -49,17 +49,20 @@ list = os.listdir(rootdir)
 # pattern = re.compile(r'.*43959.*h5$')
 
 path_list = [
-'./output/ensemble/level1/0.00000_rf_gp0_450_kwmax_depth4num_round100split_num1model_typerfgp0threshold450filenew=3geo=1026.h5',
     #'./output/ensemble/level1/0.00000_rf_gp0_450_kwmax_depth4num_round100split_num1model_typerfgp0threshold450filenew=2geo=2101.h5',
-'./output/ensemble/level1/0.00000_rf_gp0_300_kwmax_depth4num_round100split_num1model_typerfgp0threshold300filenew=1geo=1801.h5',
 #'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1precision4model_typerfgp0threshold400filenew=3geo=1026.h5',
 #'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1precision5model_typerfgp0threshold400filenew=5geo=148.h5',
 './output/ensemble/level1/0.00000_rf_gp0_200_kwmax_depth4num_round100split_num1model_typerfgp0threshold200filenew=0geo=423.h5',
+'./output/ensemble/level1/0.00000_rf_gp0_300_kwmax_depth4num_round100split_num1model_typerfgp0threshold300filenew=1geo=1801.h5',
 
 './output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=2geo=2101.h5',
-'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=3geo=1026.h5',
-'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=4geo=318.h5',
-'./output/ensemble/level1/0.00000_rf_gp0_400_kwmax_depth4num_round100split_num1model_typerfgp0threshold400filenew=5geo=148.h5',
+
+'./output/ensemble/level1/0.00000_rf_gp0_450_kwmax_depth4num_round100split_num1model_typerfgp0threshold450filenew=3geo=1026.h5',
+
+'./output/ensemble/level1/0.00000_rf_gp0_550_kwmax_depth4num_round100split_num1model_typerfgp0threshold550filenew=4geo=318.h5',
+
+'./output/ensemble/level1/0.00000_rf_gp0_450_kwmax_depth4num_round100split_num1model_typerfgp0threshold450filenew=5geo=148.h5',
+
 
 ]
 
