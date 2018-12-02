@@ -441,6 +441,7 @@ def get_home_company():
 #@file_cache()
 def get_outid_geo_summary():
     from code_felix.ensemble.stacking import train_file, test_file
+    from code_felix.car.utils import get_time_geo_extend
     train_geo = get_time_geo_extend(train_file)
     geo_sum = train_geo.groupby('out_id').agg({'geo4_cat': 'nunique', 'geo5_cat': 'nunique',
                                                'geo6_cat': 'nunique', 'geo7_cat': 'nunique',
@@ -462,6 +463,17 @@ def get_outid_geo_summary():
     test_geo_sum.columns = [f'test_{col}' for col in test_geo_sum.columns]
 
     return pd.concat([geo_sum, test_geo_sum], axis=1)
+
+
+def adjust_zoneid_base_geo6(df):
+    df.end_zoneid = df.geo6
+
+    df.end_lat = df.end_lat.astype(float)
+    df.end_lon = df.end_lon.astype(float)
+
+    df.end_lat_adj = df.groupby(['out_id','geo6'] )['end_lat'].transform('mean')
+    df.end_lon_adj = df.groupby(['out_id','geo6'] )['end_lon'].transform('mean')
+    return df
 
 
 if __name__ == '__main__':

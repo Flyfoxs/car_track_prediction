@@ -283,12 +283,15 @@ def get_zone_inf(out_id, train, test):
     mini_train = train[train.out_id==out_id].copy()
 
     #logger.debug(mini.columns)
-    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj', 'end_sn']].drop_duplicates()
+    mini_train = mini_train[['end_zoneid', 'end_lat_adj', 'end_lon_adj']].drop_duplicates()
     mini_train = mini_train.set_index('end_zoneid')
 
-    predict_cols = ['predict_lat','predict_lon', 'predict_sn']
+    predict_cols = ['predict_lat','predict_lon']
     #logger.debug(test.head(5))
     mini_test = pd.concat([test[test.out_id==out_id], pd.DataFrame(columns=predict_cols)])
+
+    logger.debug(f'====={mini_test[predict_cols].shape}/{mini_test.predict_zone_id.shape}/{mini_train.loc[mini_test.predict_zone_id].shape}')
+
     mini_test[predict_cols] = mini_train.loc[mini_test.predict_zone_id].values
     if 'end_lat' in mini_test:
         #mini_test['end_zoneid'] =
@@ -460,7 +463,12 @@ def reduce_geo(n_components=10, precision=5, ):
 
     return reduce.reset_index()
 
-
+@lru_cache()
+def get_low_frequency_geo():
+    ext = get_time_geo_extend(train_file)
+    ext = ext.groupby('geo4_cat_end').agg({'out_id': 'nunique', 'r_key': 'count'}).sort_values(['out_id', 'r_key'])
+    ext = ext[(ext.out_id == 1) & (ext.r_key <= 1)]
+    return ext.index
 
 if __name__ == '__main__':
     df = get_train_with_adjust_position(150)

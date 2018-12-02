@@ -86,3 +86,9 @@ zoneid reduce step:
 3) 
 4) Narrow down by geo*
 
+
+
+* Remove usless geo4
+* Recal center add
+* cal centerid by geo4
+* train model by big geoid
