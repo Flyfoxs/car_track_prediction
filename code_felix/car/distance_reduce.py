@@ -465,14 +465,14 @@ def get_outid_geo_summary():
     return pd.concat([geo_sum, test_geo_sum], axis=1)
 
 
-def adjust_zoneid_base_geo6(df):
-    df.end_zoneid = df.geo6
+def adjust_zoneid_base_zoneid(df):
+    #df.end_zoneid = df.geo6
 
     df.end_lat = df.end_lat.astype(float)
     df.end_lon = df.end_lon.astype(float)
 
-    df.end_lat_adj = df.groupby(['out_id','geo6'] )['end_lat'].transform('mean')
-    df.end_lon_adj = df.groupby(['out_id','geo6'] )['end_lon'].transform('mean')
+    df.end_lat_adj = df.groupby(['out_id','end_zoneid'] )['end_lat'].transform('mean')
+    df.end_lon_adj = df.groupby(['out_id','end_zoneid'] )['end_lon'].transform('mean')
     return df
 
 

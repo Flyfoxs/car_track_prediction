@@ -19,14 +19,14 @@ if __name__ == '__main__':
 
 
     for deep in [4]:
-        for num_round in range(40, 100, 10):
+        for num_round in [50,60,70]:
                     for feature_gp in feature_gp_list:
                         for split_num in [1]:
                             for sub , threshold in sorted([
                                     # ('new=0geo=423',  200),
                                     # ('new=1geo=1801', 300),
-                                    # ('new=2geo=2101', 400),
-                                    ('new=3geo=1026', 450)
+                                    ('new=2geo=2101', 400),
+                                # ('new=3geo=1026', 450)
                                     # ('new=4geo=318', 550),
                                     # ('new=5geo=148', 450),
                             ], reverse=False):

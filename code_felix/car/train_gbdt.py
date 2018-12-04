@@ -179,7 +179,7 @@ def gen_sub(file, threshold, gp, model_type, **kw):
     train = train[train.out_id.isin(out_id_list)]
     test = test[test.out_id.isin(out_id_list)]
 
-    #train = adjust_zoneid_base_geo6(train)
+    train = adjust_zoneid_base_zoneid(train)
 
     sub, val, ensemble_test, ensemble_train = process_df(train, test, threshold, gp, model_type, **kw)
 
