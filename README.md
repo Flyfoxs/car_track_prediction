@@ -6,10 +6,13 @@
 
 # 运行步骤
 1) 运行下面的程序,把训练和测试数据分为5块
+
 python ./code_felix/split/group.py
 
 2) 运行下面的程序对上面的5块分割分别进行训练
+
 python ./code_felix/car/val_rf.py
 
 3) 合并上一步的文件,生成可以提交的文件(里面的文件目录列表需要替换为真正的文件路径)
+
 python ./code_felix/ensemble/concat.py
