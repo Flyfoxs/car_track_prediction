@@ -1,38 +1,38 @@
 from code_felix.car.utils import *
 import os.path
 
-def get_file_name(file_list, comments=''):
-    file_list = [ item.split('_')[0].replace('0.','') for item in file_list]
-    file_list = sorted(file_list)
-    file = '_'.join(file_list)
-    return f'./output/merge_{comments}_{file}.csv'
+def get_file_name(comments):
+
+    return f'./output/merge_{comments}.csv'
 
 if __name__ == '__main__':
-    rootdir = './output/ensemble/level1/'
+    rootdir = './output/ensemble/1level/'
     list = os.listdir(rootdir)
     # path_list = sorted(list, reverse=True)
     # import re
     # pattern = re.compile(r'.*43959.*h5$')
 
-    path_list =[
+    # path_list =[
+    #
+    #     '0.20596_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=0gp=638.h5',
+    #     '0.29345_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=1gp=604.h5',
+    #     '0.34455_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=2gp=558.h5',
+    #     '0.37130_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=3gp=627.h5',
+    #     '0.38894_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=4gp=521.h5',
+    #     '0.40405_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=5gp=593.h5',
+    #     '0.40483_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=5gp=593.h5',
+    #     '0.42350_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=6gp=580.h5',
+    #     '0.42419_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
+    #     '0.46018_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=7gp=558.h5',
+    #     '0.46175_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
+    #     '0.49107_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=8gp=556.h5',
+    #     '0.49267_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
+    #     '0.55944_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=9gp=582.h5',
+    #     '0.56076_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=9gp=582.h5',
+    #
+    # ]
 
-        '0.20596_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=0gp=638.h5',
-        '0.29345_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=1gp=604.h5',
-        '0.34455_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=2gp=558.h5',
-        '0.37130_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=3gp=627.h5',
-        '0.38894_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=4gp=521.h5',
-        '0.40405_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=5gp=593.h5',
-        '0.40483_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=5gp=593.h5',
-        '0.42350_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=6gp=580.h5',
-        '0.42419_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=6gp=580.h5',
-        '0.46018_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=7gp=558.h5',
-        '0.46175_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=7gp=558.h5',
-        '0.49107_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=8gp=556.h5',
-        '0.49267_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=8gp=556.h5',
-        '0.55944_rf_500_kwmax_depth4num_round100split_num9model_typerfgp0threshold500filenew=9gp=582.h5',
-        '0.56076_rf_500_kwmax_depth4num_round100split_num5model_typerfgp0threshold500filenew=9gp=582.h5',
-
-    ]
+    path_list = [item for item in list if item.endswith("h5")]
 
     path_list = [os.path.join(rootdir, item) for item in path_list]
 
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     test = get_time_geo_extend('./input/test_new.csv')
     sub_df = pd.DataFrame(index=test.r_key).join(sub_df)
 
-    file_name = get_file_name(file_list, new_loss)
+    file_name = get_file_name(f'{new_loss}_merge_1level_{len(file_list)}', )
     logger.debug(file_name)
     sub_df.to_csv(file_name)
 

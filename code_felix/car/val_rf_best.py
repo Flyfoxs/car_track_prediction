@@ -20,23 +20,18 @@ if __name__ == '__main__':
 
     for deep in [4]:
         for num_round in [50,60,70]:
-            for min_data_in_leaf in [80, 60, 20]:
-                    for feature_gp in feature_gp_list:
-                        for split_num in [5]:
+                    for feature_gp in [0]:
+                        for split_num in [1]:
                             for sub , threshold in sorted([
-                                    # ('new=0geo=423',  200),
-                                    # ('new=1geo=1801', 300),
+                                    ('new=0geo=423',  200),
+                                    ('new=1geo=1801', 300),
                                     ('new=2geo=2101', 400),
-                                    # ('new=3geo=1026', 450),
-                                    # ('new=4geo=318', 550),
-                                    # ('new=5geo=148', 450),
-                            ], reverse=True):
-                                gen_sub(sub, 500, 0, 'lgb',
-                                        max_depth=deep,
-                                        num_round=num_round,
-                                        split_num=split_num,
-                                        min_data_in_leaf=min_data_in_leaf
-                                        )
+                                    ('new=3geo=1026', 450)
+                                    ('new=4geo=318', 550),
+                                    ('new=5geo=148', 450),
+                            ], reverse=False):
+                                 gen_sub(sub, threshold, feature_gp, 'rf', max_depth=deep, num_round=num_round, split_num= split_num)
+
     # for threshold in sorted([  40,70,500, 30, 50, 450, 550, 2000], reverse=True):
     #     for sub in ['all_3']:
     #         for feature_gp in [0]:
